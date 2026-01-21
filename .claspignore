@@ -1,0 +1,9 @@
+**/**
+!backend/**
+!frontend/**
+!appsscript.json
+README.md
+DEPLOYMENT.md
+.git/**
+node_modules/**
+.clasp.json

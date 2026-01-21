@@ -1,0 +1,101 @@
+<script>
+/**
+ * API.JS - Cliente para comunicación con el backend
+ */
+
+const API = {
+  call: function(functionName, ...args) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)
+        [functionName](...args);
+    });
+  },
+
+  obtenerUsuario: async function() {
+    return await this.call('obtenerUsuarioGoogle');
+  },
+
+  cerrarSesion: async function() {
+    return await this.call('cerrarSesion');
+  },
+
+  crearReparacion: async function(datos) {
+    return await this.call('apiCrearReparacion', datos);
+  },
+
+  obtenerReparacion: async function(resguardo) {
+    return await this.call('apiObtenerReparacion', resguardo);
+  },
+
+  buscarReparaciones: async function(filtros = {}, pagina = 1, porPagina = 50) {
+    console.log('🔵 API.buscarReparaciones llamado con:', { filtros, pagina, porPagina });
+    try {
+      const resultado = await this.call('apiBuscarReparaciones', filtros, pagina, porPagina);
+      console.log('🔵 API.buscarReparaciones resultado:', resultado);
+      return resultado;
+    } catch (error) {
+      console.error('❌ API.buscarReparaciones error:', error);
+      return {
+        exito: false,
+        error: error.message || 'Error desconocido en buscarReparaciones'
+      };
+    }
+  },
+
+  actualizarReparacion: async function(resguardo, datos) {
+    return await this.call('apiActualizarReparacion', resguardo, datos);
+  },
+
+  cambiarEstado: async function(resguardo, nuevoEstado, opciones = {}) {
+    return await this.call('apiCambiarEstado', resguardo, nuevoEstado, opciones);
+  },
+
+  agregarObservacion: async function(resguardo, texto) {
+    return await this.call('apiAgregarObservacion', resguardo, texto);
+  },
+
+  actualizarPresupuesto: async function(resguardo, presupuesto) {
+    return await this.call('apiActualizarPresupuesto', resguardo, presupuesto);
+  },
+
+  aceptarPresupuesto: async function(resguardo) {
+    return await this.call('apiAceptarPresupuesto', resguardo);
+  },
+
+  rechazarPresupuesto: async function(resguardo, motivo) {
+    return await this.call('apiRechazarPresupuesto', resguardo, motivo);
+  },
+
+  actualizarPieza: async function(resguardo, datosPieza) {
+    return await this.call('apiActualizarPieza', resguardo, datosPieza);
+  },
+
+  cambiarEstadoPedido: async function(resguardo, nuevoEstado, opciones = {}) {
+    return await this.call('apiCambiarEstadoPedido', resguardo, nuevoEstado, opciones);
+  },
+
+  obtenerPedidosActivos: async function() {
+    return await this.call('apiObtenerPedidosActivos');
+  },
+
+  obtenerMetricas: async function() {
+    return await this.call('apiObtenerMetricas');
+  },
+
+  obtenerAlertas: async function() {
+    return await this.call('apiObtenerAlertas');
+  },
+
+  marcarComoEntregado: async function(resguardo, numeroFactura) {
+    return await this.call('apiMarcarComoEntregado', resguardo, numeroFactura);
+  },
+
+  obtenerConfiguracion: async function() {
+    return await this.call('apiObtenerConfiguracion');
+  }
+};
+
+window.API = API;
+</script>

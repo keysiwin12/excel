@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Page</title>
+</head>
+<body>
+  <h1>Test Page - Sistema Kelatos</h1>
+
+  <h2>Configuración KELATOS:</h2>
+  <ul>
+    <li><strong>Nombre:</strong> <?= KELATOS.nombre ?></li>
+    <li><strong>Logo:</strong> <img src="<?= KELATOS.logo ?>" alt="Logo" style="max-width: 200px;"></li>
+    <li><strong>Dirección:</strong> <?= KELATOS.direccion ?></li>
+    <li><strong>Teléfono:</strong> <?= KELATOS.telefono ?></li>
+    <li><strong>Web:</strong> <a href="<?= KELATOS.web ?>"><?= KELATOS.web ?></a></li>
+  </ul>
+
+  <h2>Técnicos:</h2>
+  <ul>
+    <? TECNICOS.forEach(function(tecnico) { ?>
+      <li><?= tecnico ?></li>
+    <? }); ?>
+  </ul>
+
+  <h2>Estados de Reparación:</h2>
+  <ul>
+    <? Object.keys(ESTADOS_REPARACION).forEach(function(estado) { ?>
+      <li><?= estado ?></li>
+    <? }); ?>
+  </ul>
+
+  <hr>
+  <p><a href="?page=login">Ir a Login</a> | <a href="?page=dashboard">Ir a Dashboard</a></p>
+
+  <script>
+    console.log('Test page cargada correctamente');
+    alert('Si ves este mensaje, JavaScript funciona');
+  </script>
+</body>
+</html>
