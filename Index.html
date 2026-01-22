@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Kelatos</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* ========================================
+       ESTILOS - Consolidado de css_styles.html
+       ======================================== */
+    :root {
+      --kelatos-primary: #1768ea;
+      --kelatos-secondary: #3633e1;
+      --kelatos-text: #373a3c;
+      --kelatos-bg: #f8f9fa;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--kelatos-bg);
+      color: var(--kelatos-text);
+    }
+
+    .navbar { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .bg-primary { background-color: var(--kelatos-primary) !important; }
+    .navbar-brand img { filter: brightness(0) invert(1); }
+
+    .card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important; }
+    .metric-card .card-body { padding: 1.5rem; }
+    .metric-icon { width: 60px; height: 60px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
+    .metric-icon i { font-size: 28px; }
+
+    .btn-primary {
+      background-color: var(--kelatos-primary);
+      border-color: var(--kelatos-primary);
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+      background-color: var(--kelatos-secondary);
+      border-color: var(--kelatos-secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(23,104,234,0.3);
+    }
+
+    .table { font-size: 0.9rem; }
+    .table thead { background-color: #f8f9fa; border-bottom: 2px solid #dee2e6; }
+    .table thead th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; color: #6c757d; padding: 1rem 0.75rem; }
+    .table tbody tr { transition: background-color 0.2s ease; }
+    .table tbody tr:hover { background-color: rgba(23,104,234,0.05); }
+    .table tbody td { vertical-align: middle; padding: 0.85rem 0.75rem; }
+
+    .badge { font-weight: 500; padding: 0.4em 0.8em; font-size: 0.85rem; }
+
+    .form-control:focus, .form-select:focus { border-color: var(--kelatos-primary); box-shadow: 0 0 0 0.2rem rgba(23,104,234,0.25); }
+    .form-label { font-weight: 500; margin-bottom: 0.5rem; color: var(--kelatos-text); font-size: 0.9rem; }
+    .input-group-text { border-right: 0; }
+    .form-control.border-start-0 { border-left: 0; }
+
+    .modal-header { background-color: var(--kelatos-primary); color: white; border-bottom: none; }
+    .modal-header .btn-close { filter: brightness(0) invert(1); }
+    .modal-content { border: none; border-radius: 15px; overflow: hidden; }
+
+    .alert { border: none; border-radius: 10px; }
+    .alert-warning { background-color: #fff3cd; color: #856404; }
+
+    .pagination .page-link { color: var(--kelatos-primary); border: 1px solid #dee2e6; transition: all 0.2s ease; }
+    .pagination .page-link:hover { background-color: var(--kelatos-primary); border-color: var(--kelatos-primary); color: white; }
+    .pagination .page-item.active .page-link { background-color: var(--kelatos-primary); border-color: var(--kelatos-primary); }
+
+    @media (max-width: 768px) {
+      .metric-card .card-body { padding: 1rem; }
+      .metric-icon { width: 50px; height: 50px; }
+      .metric-icon i { font-size: 24px; }
+      .table { font-size: 0.8rem; }
+      .table thead th { font-size: 0.7rem; padding: 0.75rem 0.5rem; }
+      .table tbody td { padding: 0.75rem 0.5rem; }
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .card, .table, .alert { animation: fadeIn 0.3s ease; }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: var(--kelatos-primary); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--kelatos-secondary); }
+  </style>
+</head>
+<body>
+  <!-- ========================================
+       HTML - Estructura del Dashboard
+       ======================================== -->
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center" href="#">
+        <img src="<?= KELATOS.logo ?>" alt="Kelatos" height="40" class="me-2">
+        <span class="fw-bold">Kelatos</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link active" href="#">
+              <i class="fas fa-home"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <button class="btn btn-light btn-sm ms-3" onclick="abrirModalNuevaReparacion()">
+              <i class="fas fa-plus"></i> Nueva Reparación
+            </button>
+          </li>
+          <li class="nav-item ms-3">
+            <span class="nav-link">
+              <i class="fas fa-user-circle"></i>
+              <span id="userName">Usuario</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Métricas -->
+    <div class="row mb-4">
+      <div class="col-12 mb-3">
+        <h2 class="fw-bold">
+          <i class="fas fa-chart-line"></i> Dashboard
+        </h2>
+        <p class="text-muted mb-0">Resumen general del sistema</p>
+      </div>
+
+      <!-- Card: Presupuesto Pendiente -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Ppto. Pendiente</h6>
+                <h2 class="mb-0 fw-bold" id="metricPresupuesto">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-info bg-opacity-10">
+                <i class="fas fa-file-invoice-dollar text-info"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Esperando Pieza -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Pieza Pendiente</h6>
+                <h2 class="mb-0 fw-bold" id="metricEsperandoPieza">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-warning bg-opacity-10">
+                <i class="fas fa-box text-warning"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: En Reparacion -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">En Reparacion</h6>
+                <h2 class="mb-0 fw-bold" id="metricReparando">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-primary bg-opacity-10">
+                <i class="fas fa-wrench text-primary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Listos -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Listos p/ Recoger</h6>
+                <h2 class="mb-0 fw-bold" id="metricListos">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-success bg-opacity-10">
+                <i class="fas fa-check-circle text-success"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Búsqueda -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8 mb-3 mb-md-0">
+                <div class="input-group">
+                  <span class="input-group-text bg-white">
+                    <i class="fas fa-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0"
+                    id="searchInput"
+                    placeholder="Buscar por cliente, teléfono, resguardo, equipo..."
+                    onkeyup="buscarReparaciones()">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-primary w-100" onclick="abrirModalNuevaReparacion()">
+                  <i class="fas fa-plus"></i> Nueva Reparación
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="row mb-4" id="alertasSection" style="display: none;">
+      <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm">
+          <h5 class="alert-heading">
+            <i class="fas fa-exclamation-triangle"></i> Alertas Pendientes
+          </h5>
+          <div id="alertasList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pedidos Pendientes -->
+    <div class="row mb-4" id="pedidosSection">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <i class="fas fa-truck"></i> Pedidos de Piezas Pendientes
+              </h5>
+              <span class="badge bg-warning" id="pedidosPendientesCount">0</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="pedidosList" class="table-responsive">
+              <p class="text-muted text-center py-3">Cargando pedidos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Reparaciones -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+              <h5 class="mb-0">
+                <i class="fas fa-list"></i> Todas las Reparaciones
+              </h5>
+              <div class="d-flex gap-2 mt-2 mt-md-0">
+                <!-- Filtros -->
+                <select class="form-select form-select-sm" id="filterEstado" onchange="aplicarFiltros()">
+                  <option value="Todos">Todos los estados</option>
+                  <? Object.keys(ESTADOS_REPARACION).forEach(function(estado) { ?>
+                    <option value="<?= estado ?>"><?= estado ?></option>
+                  <? }); ?>
+                </select>
+
+                <select class="form-select form-select-sm" id="filterTecnico" onchange="aplicarFiltros()">
+                  <option value="Todos">Todos los técnicos</option>
+                  <? TECNICOS.forEach(function(tecnico) { ?>
+                    <option value="<?= tecnico ?>"><?= tecnico ?></option>
+                  <? }); ?>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div id="reparacionesList" class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Resguardo</th>
+                    <th>Cliente</th>
+                    <th>Equipo</th>
+                    <th>Estado</th>
+                    <th>Técnico</th>
+                    <th>Pieza</th>
+                    <th>Días</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="reparacionesTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-4">
+                      <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                      </div>
+                      <p class="mt-2 text-muted">Cargando reparaciones...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="text-muted">Mostrando <strong id="resultadosCount">0</strong> reparaciones</span>
+              </div>
+              <nav id="pagination">
+                <!-- Paginación se generará dinámicamente -->
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nueva Reparación (Fase 1 - Recepción) -->
+  <div class="modal fade" id="modalNuevaReparacion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-plus-circle"></i> Nueva Reparación - Recepción
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            <strong>Fase 1:</strong> Datos del parte de recepción de Factusol
+          </div>
+          <form id="formNuevaReparacion">
+            <!-- Resguardo y Fecha -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-file-alt"></i> Datos del Parte
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Nº Resguardo (Factusol) *</label>
+                <input type="text" class="form-control" id="resguardo" placeholder="Ej: RES-2025-001" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha de Recepción *</label>
+                <input type="date" class="form-control" id="fechaRecepcion" required>
+              </div>
+            </div>
+
+            <!-- Cliente -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-user"></i> Datos del Cliente
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Nombre Completo *</label>
+                <input type="text" class="form-control" id="clienteNombre" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Teléfono *</label>
+                <input type="tel" class="form-control" id="clienteTelefono" required>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-12">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="clienteEmail">
+              </div>
+            </div>
+
+            <!-- Equipo -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-laptop"></i> Datos del Equipo
+            </h6>
+            <div class="row mb-3">
+              <div class="col-12">
+                <label class="form-label">Modelo / Marca del Equipo *</label>
+                <input type="text" class="form-control" id="equipoModelo" placeholder="Ej: MacBook Pro 2020, Dell XPS 15..." required>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-12">
+                <label class="form-label">Síntoma / Avería *</label>
+                <textarea class="form-control" id="sintoma" rows="3" placeholder="Describe el problema reportado por el cliente..." required></textarea>
+              </div>
+            </div>
+
+            <!-- Estado Inicial -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-flag"></i> Estado Inicial
+            </h6>
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="btn-group w-100" role="group">
+                  <input type="radio" class="btn-check" name="estadoInicial" id="estadoPresupuestoPendiente" value="Presupuesto Pendiente" checked>
+                  <label class="btn btn-outline-primary" for="estadoPresupuestoPendiente">
+                    <i class="fas fa-file-invoice-dollar"></i> Presupuesto Pendiente
+                  </label>
+
+                  <input type="radio" class="btn-check" name="estadoInicial" id="estadoGarantia" value="Garantía">
+                  <label class="btn btn-outline-success" for="estadoGarantia">
+                    <i class="fas fa-shield-alt"></i> Garantía
+                  </label>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarNuevaReparacion()">
+            <i class="fas fa-save"></i> Registrar Recepción
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Datos pre-cargados del servidor -->
+  <script>
+    window._DATOS_PRECARGADOS = <?!= REPARACIONES_INICIALES || '{"exito":false,"error":"No se inyectaron datos"}' ?>;
+    window._METRICAS_PRECARGADAS = <?!= METRICAS_INICIALES || '{"exito":false,"error":"No se inyectaron métricas"}' ?>;
+  </script>
+
+  <script>
+    /* ========================================
+       API - Comunicación con backend
+       Consolidado de js_api.html
+       ======================================== */
+
+    const API = {
+      call: function(functionName, ...args) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            [functionName](...args);
+        });
+      },
+
+      obtenerUsuario: async function() {
+        return await this.call('obtenerUsuarioGoogle');
+      },
+
+      cerrarSesion: async function() {
+        return await this.call('cerrarSesion');
+      },
+
+      crearReparacion: async function(datos) {
+        return await this.call('apiCrearReparacion', datos);
+      },
+
+      obtenerReparacion: async function(resguardo) {
+        return await this.call('apiObtenerReparacion', resguardo);
+      },
+
+      buscarReparaciones: async function(filtros = {}, pagina = 1, porPagina = 50) {
+        console.log('🔵 API.buscarReparaciones llamado con:', { filtros, pagina, porPagina });
+        try {
+          const resultado = await this.call('apiBuscarReparaciones', filtros, pagina, porPagina);
+          console.log('🔵 API.buscarReparaciones resultado:', resultado);
+          return resultado;
+        } catch (error) {
+          console.error('❌ API.buscarReparaciones error:', error);
+          return {
+            exito: false,
+            error: error.message || 'Error desconocido en buscarReparaciones'
+          };
+        }
+      },
+
+      actualizarReparacion: async function(resguardo, datos) {
+        return await this.call('apiActualizarReparacion', resguardo, datos);
+      },
+
+      cambiarEstado: async function(resguardo, nuevoEstado, opciones = {}) {
+        return await this.call('apiCambiarEstado', resguardo, nuevoEstado, opciones);
+      },
+
+      agregarObservacion: async function(resguardo, texto) {
+        return await this.call('apiAgregarObservacion', resguardo, texto);
+      },
+
+      actualizarPresupuesto: async function(resguardo, presupuesto) {
+        return await this.call('apiActualizarPresupuesto', resguardo, presupuesto);
+      },
+
+      aceptarPresupuesto: async function(resguardo) {
+        return await this.call('apiAceptarPresupuesto', resguardo);
+      },
+
+      rechazarPresupuesto: async function(resguardo, motivo) {
+        return await this.call('apiRechazarPresupuesto', resguardo, motivo);
+      },
+
+      actualizarPieza: async function(resguardo, datosPieza) {
+        return await this.call('apiActualizarPieza', resguardo, datosPieza);
+      },
+
+      cambiarEstadoPedido: async function(resguardo, nuevoEstado, opciones = {}) {
+        return await this.call('apiCambiarEstadoPedido', resguardo, nuevoEstado, opciones);
+      },
+
+      obtenerPedidosActivos: async function() {
+        return await this.call('apiObtenerPedidosActivos');
+      },
+
+      obtenerMetricas: async function() {
+        return await this.call('apiObtenerMetricas');
+      },
+
+      obtenerAlertas: async function() {
+        return await this.call('apiObtenerAlertas');
+      },
+
+      marcarComoEntregado: async function(resguardo, numeroFactura) {
+        return await this.call('apiMarcarComoEntregado', resguardo, numeroFactura);
+      },
+
+      obtenerConfiguracion: async function() {
+        return await this.call('apiObtenerConfiguracion');
+      }
+    };
+
+    window.API = API;
+  </script>
+
+  <script>
+    /* ========================================
+       APP - Lógica principal del dashboard
+       Consolidado de js_app.html
+       ======================================== */
+
+    let reparacionesActuales = [];
+    let paginaActual = 1;
+    let filtrosActuales = {};
+    let modalNuevaReparacion;
+
+    // Datos pre-cargados desde el servidor
+    var DATOS_INICIALES = window._DATOS_PRECARGADOS || {"exito": false, "error": "No se pre-cargaron datos"};
+    var METRICAS_INICIALES = window._METRICAS_PRECARGADAS || {"exito": false, "error": "No se pre-cargaron métricas"};
+
+    window.onload = async function() {
+      console.log('🔵 Dashboard: Iniciando carga...');
+      console.log('🔵 Datos pre-cargados recibidos:', DATOS_INICIALES);
+      console.log('🔵 Métricas pre-cargadas recibidas:', METRICAS_INICIALES);
+
+      try {
+        // Sin autenticación por ahora - usar usuario genérico
+        document.getElementById('userName').textContent = 'Usuario';
+        console.log('✅ Dashboard: Usuario genérico mostrado en navbar');
+
+        console.log('🔵 Dashboard: Usando datos pre-cargados del servidor...');
+
+        // Renderizar métricas pre-cargadas
+        if (METRICAS_INICIALES && METRICAS_INICIALES.presupuestoPendiente !== undefined) {
+          const m = METRICAS_INICIALES;
+          document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+          document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+          document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+          document.getElementById('metricListos').textContent = m.listos || 0;
+          console.log('✅ Dashboard: Métricas renderizadas');
+        } else if (METRICAS_INICIALES && METRICAS_INICIALES.exito && METRICAS_INICIALES.metricas) {
+          // Formato alternativo con wrapper
+          const m = METRICAS_INICIALES.metricas;
+          document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+          document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+          document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+          document.getElementById('metricListos').textContent = m.listos || 0;
+          console.log('✅ Dashboard: Métricas renderizadas (formato wrapper)');
+        } else {
+          console.warn('⚠️ Métricas no disponibles:', METRICAS_INICIALES);
+        }
+
+        // Usar datos pre-cargados en lugar de llamar a la API
+        if (DATOS_INICIALES && DATOS_INICIALES.exito) {
+          console.log(`✅ ${DATOS_INICIALES.total} reparaciones pre-cargadas desde el servidor`);
+          reparacionesActuales = DATOS_INICIALES.resultados;
+          renderizarTablaReparaciones(DATOS_INICIALES.resultados);
+          renderizarPaginacion(DATOS_INICIALES);
+          document.getElementById('resultadosCount').textContent = DATOS_INICIALES.total;
+          console.log('✅ Dashboard: Tabla renderizada con datos pre-cargados');
+        } else {
+          console.error('❌ Error en datos pre-cargados:', DATOS_INICIALES.error);
+          mostrarError('Error al cargar datos: ' + (DATOS_INICIALES.error || 'Datos no disponibles'));
+        }
+
+      } catch (error) {
+        console.error('❌ Dashboard: Error en carga:', error);
+        console.error('Stack:', error.stack);
+        mostrarError('Error al cargar el dashboard: ' + error.message);
+      }
+    };
+
+    async function cargarMetricas() {
+      try {
+        const resultado = await API.obtenerMetricas();
+        if (resultado.exito) {
+          const m = resultado.metricas;
+          document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+          document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+          document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+          document.getElementById('metricListos').textContent = m.listos || 0;
+          if (m.alertas && m.alertas.length > 0) mostrarAlertas(m.alertas);
+        }
+      } catch (error) {
+        console.error('Error métricas:', error);
+      }
+    }
+
+    function mostrarAlertas(alertas) {
+      const section = document.getElementById('alertasSection');
+      const list = document.getElementById('alertasList');
+      let html = '<ul class="mb-0">';
+      alertas.slice(0, 5).forEach(a => {
+        html += `<li class="mb-1">${a.mensaje} - <strong>${a.resguardo}</strong></li>`;
+      });
+      html += '</ul>';
+      if (alertas.length > 5) html += `<small class="text-muted">Y ${alertas.length - 5} alertas más...</small>`;
+      list.innerHTML = html;
+      section.style.display = 'block';
+    }
+
+    async function cargarPedidosPendientes() {
+      try {
+        const resultado = await API.obtenerPedidosActivos();
+        if (resultado.exito) {
+          const p = resultado.pedidos;
+          const total = p.enTransito.length + p.pedidos.length + p.retrasados.length;
+          document.getElementById('pedidosPendientesCount').textContent = total;
+          if (total === 0) {
+            document.getElementById('pedidosList').innerHTML = '<p class="text-muted text-center py-3"><i class="fas fa-check-circle"></i> No hay pedidos pendientes</p>';
+            return;
+          }
+          let html = '<table class="table table-sm mb-0"><thead><tr><th>Resguardo</th><th>Cliente</th><th>Proveedor</th><th>Estado</th><th>Llegada</th><th>Acción</th></tr></thead><tbody>';
+          p.retrasados.forEach(ped => { html += renderizarFilaPedido(ped, true); });
+          p.enTransito.forEach(ped => { html += renderizarFilaPedido(ped, false); });
+          p.pedidos.forEach(ped => { html += renderizarFilaPedido(ped, false); });
+          html += '</tbody></table>';
+          document.getElementById('pedidosList').innerHTML = html;
+        }
+      } catch (error) {
+        console.error('Error pedidos:', error);
+      }
+    }
+
+    function renderizarFilaPedido(pedido, retrasado) {
+      const fecha = pedido.pieza.fechaEntrega ? new Date(pedido.pieza.fechaEntrega).toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'}) : '-';
+      const clase = retrasado ? 'table-danger' : '';
+      const icono = pedido.pieza.estadoPedido === 'En Tránsito' ? '🚚' : '📦';
+      return `<tr class="${clase}"><td><strong>${pedido.resguardo}</strong></td><td>${pedido.cliente.nombre}</td><td><small>${pedido.pieza.proveedor || '-'}</small></td><td><span class="badge bg-warning">${icono} ${pedido.pieza.estadoPedido}</span></td><td>${fecha}${retrasado ? ' <span class="badge bg-danger">⚠️</span>' : ''}</td><td><button class="btn btn-sm btn-outline-primary" onclick="alert('Funcionalidad en desarrollo')">Ver</button></td></tr>`;
+    }
+
+    async function cargarReparaciones() {
+      try {
+        console.log('🔵 cargarReparaciones: Iniciando carga vía API...');
+        console.log('🔵 filtrosActuales:', filtrosActuales);
+        console.log('🔵 paginaActual:', paginaActual);
+
+        mostrarLoader();
+
+        // Llamar a la API (solo para filtros/paginación, no para carga inicial)
+        const resultado = await API.buscarReparaciones(filtrosActuales, paginaActual, 50);
+
+        console.log('🔵 Resultado buscarReparaciones:', resultado);
+
+        if (resultado === null || resultado === undefined) {
+          console.error('❌ ERROR CRÍTICO: resultado es null o undefined');
+          mostrarError('Error crítico: La función del backend no retornó datos. Revisa los logs de Apps Script.');
+          return;
+        }
+
+        if (resultado && resultado.exito) {
+          console.log('✅ Búsqueda exitosa, renderizando tabla...');
+          reparacionesActuales = resultado.resultados;
+          renderizarTablaReparaciones(resultado.resultados);
+          renderizarPaginacion(resultado);
+          document.getElementById('resultadosCount').textContent = resultado.total;
+        } else {
+          console.error('❌ Error en resultado:', resultado);
+          mostrarError(resultado?.error || 'Error al cargar reparaciones');
+        }
+      } catch (error) {
+        console.error('❌ Error reparaciones:', error);
+        console.error('Stack:', error.stack);
+        mostrarError('Error al cargar reparaciones: ' + error.message);
+      }
+    }
+
+    function renderizarTablaReparaciones(reparaciones) {
+      const tbody = document.getElementById('reparacionesTableBody');
+      if (reparaciones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-inbox"></i> No se encontraron reparaciones</td></tr>';
+        return;
+      }
+      let html = '';
+      reparaciones.forEach(rep => {
+        const dias = calcularDias(rep.fechaElaboracionPpto);
+        const pieza = rep.pieza && rep.pieza.estadoPedido ? `<span class="badge bg-warning">${rep.pieza.estadoPedido}</span>` : '-';
+        const badge = obtenerBadgeEstado(rep.estado);
+        html += `<tr style="cursor: pointer;"><td><strong>${rep.resguardo}</strong></td><td>${rep.cliente.nombre}<br><small class="text-muted">${rep.cliente.telefono}</small></td><td>${rep.equipo.modelo}</td><td>${badge}</td><td><small>${rep.tecnico || '-'}</small></td><td>${pieza}</td><td>${dias >= 0 ? dias + 'd' : '-'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="alert('Detalle de reparación en desarrollo')"><i class="fas fa-eye"></i></button></td></tr>`;
+      });
+      tbody.innerHTML = html;
+    }
+
+    function obtenerBadgeEstado(estado) {
+      const colores = {
+        'Presupuesto Pendiente': 'info',
+        'Garantía': 'purple',
+        'Presupuesto Enviado': 'secondary',
+        'Presupuesto Aceptado': 'success',
+        'Presupuesto Rechazado': 'danger',
+        'Pieza Pendiente': 'warning',
+        'Pieza Entregada': 'info',
+        'En Reparación': 'primary',
+        'Reparado': 'success',
+        'No tiene Reparación': 'secondary'
+      };
+      const color = colores[estado] || 'secondary';
+      return `<span class="badge bg-${color}">${estado}</span>`;
+    }
+
+    function calcularDias(fecha) {
+      if (!fecha) return -1;
+      const hoy = new Date();
+      const fechaObj = new Date(fecha);
+      return Math.floor((hoy - fechaObj) / (1000 * 60 * 60 * 24));
+    }
+
+    function renderizarPaginacion(resultado) {
+      const div = document.getElementById('pagination');
+      if (resultado.totalPaginas <= 1) { div.innerHTML = ''; return; }
+      let html = '<ul class="pagination pagination-sm mb-0">';
+      html += `<li class="page-item ${resultado.pagina === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${resultado.pagina - 1}); return false;"><i class="fas fa-chevron-left"></i></a></li>`;
+      for (let i = 1; i <= Math.min(resultado.totalPaginas, 5); i++) {
+        html += `<li class="page-item ${i === resultado.pagina ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a></li>`;
+      }
+      if (resultado.totalPaginas > 5) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+      html += `<li class="page-item ${resultado.pagina === resultado.totalPaginas ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${resultado.pagina + 1}); return false;"><i class="fas fa-chevron-right"></i></a></li></ul>`;
+      div.innerHTML = html;
+    }
+
+    function cambiarPagina(pagina) {
+      paginaActual = pagina;
+      cargarReparaciones();
+    }
+
+    let timeoutBusqueda;
+    function buscarReparaciones() {
+      clearTimeout(timeoutBusqueda);
+      timeoutBusqueda = setTimeout(() => {
+        filtrosActuales.busqueda = document.getElementById('searchInput').value;
+        paginaActual = 1;
+        cargarReparaciones();
+      }, 500);
+    }
+
+    function aplicarFiltros() {
+      const estado = document.getElementById('filterEstado').value;
+      const tecnico = document.getElementById('filterTecnico').value;
+      filtrosActuales.estado = estado !== 'Todos' ? estado : null;
+      filtrosActuales.tecnico = tecnico !== 'Todos' ? tecnico : null;
+      paginaActual = 1;
+      cargarReparaciones();
+    }
+
+    function abrirModalNuevaReparacion() {
+      if (!modalNuevaReparacion) {
+        modalNuevaReparacion = new bootstrap.Modal(document.getElementById('modalNuevaReparacion'));
+      }
+      document.getElementById('formNuevaReparacion').reset();
+      // Establecer fecha de hoy por defecto
+      document.getElementById('fechaRecepcion').value = new Date().toISOString().split('T')[0];
+      modalNuevaReparacion.show();
+    }
+
+    async function guardarNuevaReparacion() {
+      try {
+        // Obtener estado inicial seleccionado
+        const estadoInicial = document.querySelector('input[name="estadoInicial"]:checked').value;
+
+        const datos = {
+          resguardo: document.getElementById('resguardo').value.trim(),
+          fechaRecepcion: document.getElementById('fechaRecepcion').value,
+          clienteNombre: document.getElementById('clienteNombre').value.trim(),
+          clienteTelefono: document.getElementById('clienteTelefono').value.trim(),
+          clienteEmail: document.getElementById('clienteEmail').value.trim(),
+          equipoModelo: document.getElementById('equipoModelo').value.trim(),
+          sintoma: document.getElementById('sintoma').value.trim(),
+          estado: estadoInicial
+        };
+
+        // Validar campos obligatorios
+        if (!datos.resguardo) {
+          mostrarError('El Nº de Resguardo es obligatorio');
+          return;
+        }
+        if (!datos.fechaRecepcion) {
+          mostrarError('La fecha de recepción es obligatoria');
+          return;
+        }
+        if (!datos.clienteNombre) {
+          mostrarError('El nombre del cliente es obligatorio');
+          return;
+        }
+        if (!datos.clienteTelefono) {
+          mostrarError('El teléfono del cliente es obligatorio');
+          return;
+        }
+        if (!datos.equipoModelo) {
+          mostrarError('El modelo/marca del equipo es obligatorio');
+          return;
+        }
+        if (!datos.sintoma) {
+          mostrarError('El síntoma/avería es obligatorio');
+          return;
+        }
+
+        const btn = event.target;
+        const textoOriginal = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando...';
+
+        console.log('🔵 Registrando recepción:', datos);
+        const resultado = await API.crearReparacion(datos);
+        console.log('🔵 Resultado crear:', resultado);
+
+        if (resultado && resultado.exito) {
+          modalNuevaReparacion.hide();
+          mostrarExito(`Recepción ${datos.resguardo} registrada exitosamente`);
+          // Recargar página para ver datos frescos
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || resultado?.errores?.join(', ') || 'Error al registrar');
+          btn.disabled = false;
+          btn.innerHTML = textoOriginal;
+        }
+      } catch (error) {
+        console.error('❌ Error:', error);
+        console.error('Stack:', error.stack);
+        mostrarError('Error al registrar la recepción: ' + error.message);
+      }
+    }
+
+    function mostrarLoader() {
+      document.getElementById('reparacionesTableBody').innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><p class="mt-2 text-muted">Cargando reparaciones...</p></td></tr>';
+    }
+
+    function mostrarError(mensaje) {
+      alert('Error: ' + mensaje);
+    }
+
+    function mostrarExito(mensaje) {
+      alert('Éxito: ' + mensaje);
+    }
+
+    // Exponer funciones globalmente para pruebas
+    window.testAPI = API;
+  </script>
+</body>
+</html>

@@ -1,51 +1,22 @@
 /**
  * CODE.GS - Entry Point de la aplicación
- * Rutas y funciones expuestas al frontend
- * VERSION: 1.2 - 2025-01-21
+ * Versión: 2.0.0 - Reestructuración simplificada
+ * Fecha: 2026-01-22
  */
 
 // ============================================
-// WEB APP - ENTRY POINTS
+// WEB APP - ENTRY POINT
 // ============================================
 
-// Función para verificar versión desplegada
-function obtenerVersion() {
-  return {
-    exito: true,
-    version: '1.4.0',
-    fecha: '2025-01-21',
-    mensaje: 'Métricas habilitadas + página de detalle de reparación'
-  };
-}
-
 /**
- * Función principal para servir páginas HTML
- * @param {Object} e - Parámetros de la petición
- * @returns {HtmlOutput} Página HTML
+ * Función principal del Web App
+ * Sirve el dashboard (Index.html) con datos pre-cargados
  */
 function doGet(e) {
-  const page = e.parameter.page || 'dashboard';  // Cambiar default a dashboard
-
   try {
-    // Servir la página solicitada (sin autenticación por ahora)
-    return servirPagina(page);
+    Logger.log('📄 Sirviendo Index.html - Dashboard');
 
-  } catch (error) {
-    Logger.log(`❌ Error en doGet: ${error.message}`);
-    return ContentService.createTextOutput('Error: ' + error.message);
-  }
-}
-
-/**
- * Sirve una página HTML
- * @param {string} nombre - Nombre de la página
- * @returns {HtmlOutput} Página HTML
- */
-function servirPagina(nombre) {
-  try {
-    Logger.log(`📄 Sirviendo página: ${nombre}`);
-
-    const template = HtmlService.createTemplateFromFile(`frontend/${nombre}`);
+    const template = HtmlService.createTemplateFromFile('Index');
 
     // Inyectar configuración
     template.KELATOS = KELATOS;
@@ -55,96 +26,63 @@ function servirPagina(nombre) {
     template.MARCAS = MARCAS_EQUIPOS;
     template.PROVEEDORES = PROVEEDORES;
 
-    // PRE-CARGAR DATOS para dashboard (evitar google.script.run)
-    if (nombre === 'dashboard') {
-      Logger.log(`🔵 Pre-cargando datos para dashboard...`);
-      try {
-        // Pre-cargar reparaciones
-        const reparaciones = buscarReparaciones({}, 1, 50);
-        const datosJSON = {
-          exito: true,
-          resultados: reparaciones.resultados || [],
-          total: reparaciones.total || 0,
-          pagina: 1,
-          totalPaginas: reparaciones.totalPaginas || 1
-        };
-        template.REPARACIONES_INICIALES = JSON.stringify(datosJSON);
-        Logger.log(`✓ Pre-cargadas ${reparaciones.total} reparaciones`);
+    // Pre-cargar datos del dashboard
+    Logger.log('🔵 Pre-cargando datos para dashboard...');
+    try {
+      // Pre-cargar reparaciones
+      const reparaciones = buscarReparaciones({}, 1, 50);
+      template.REPARACIONES_INICIALES = JSON.stringify({
+        exito: true,
+        resultados: reparaciones.resultados || [],
+        total: reparaciones.total || 0,
+        pagina: 1,
+        totalPaginas: reparaciones.totalPaginas || 1
+      });
+      Logger.log(`✓ Pre-cargadas ${reparaciones.total} reparaciones`);
 
-        // Pre-cargar métricas
-        const metricas = obtenerMetricas();
-        template.METRICAS_INICIALES = JSON.stringify(metricas);
-        Logger.log(`✓ Pre-cargadas métricas`);
-      } catch (e) {
-        Logger.log(`⚠️ Error pre-cargando datos: ${e.message}`);
-        template.REPARACIONES_INICIALES = JSON.stringify({
-          exito: false,
-          error: e.message,
-          resultados: [],
-          total: 0
-        });
-        template.METRICAS_INICIALES = JSON.stringify({
-          exito: false,
-          error: e.message
-        });
-      }
+      // Pre-cargar métricas
+      const metricas = obtenerMetricas();
+      template.METRICAS_INICIALES = JSON.stringify(metricas);
+      Logger.log('✓ Pre-cargadas métricas');
+    } catch (error) {
+      Logger.log(`⚠️ Error pre-cargando datos: ${error.message}`);
+      template.REPARACIONES_INICIALES = JSON.stringify({
+        exito: false,
+        error: error.message,
+        resultados: [],
+        total: 0
+      });
+      template.METRICAS_INICIALES = JSON.stringify({
+        exito: false,
+        error: error.message
+      });
     }
 
-    Logger.log(`✓ Template creado, evaluando...`);
-
     const html = template.evaluate()
-      .setTitle(`${nombre === 'login' ? 'Login' : 'Dashboard'} - Kelatos`)
+      .setTitle('Dashboard - Kelatos')
       .setFaviconUrl(KELATOS.logo)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
-    Logger.log(`✓ Página ${nombre} servida correctamente`);
-
+    Logger.log('✅ Index.html servido correctamente');
     return html;
 
   } catch (error) {
-    Logger.log(`❌ Error al servir página ${nombre}: ${error.message}`);
-    Logger.log(`Stack trace: ${error.stack}`);
-
-    // Página de error con más detalles
-    const errorHtml = HtmlService.createHtmlOutput(`
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
-            .error-container { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #dc3545; }
-            pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
-            .btn { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #1768ea; color: white; text-decoration: none; border-radius: 5px; }
-          </style>
-        </head>
-        <body>
-          <div class="error-container">
-            <h1>⚠️ Error al cargar la página</h1>
-            <p><strong>Página solicitada:</strong> ${nombre}</p>
-            <p><strong>Error:</strong></p>
-            <pre>${error.message}</pre>
-            <p><strong>Stack trace:</strong></p>
-            <pre>${error.stack || 'No disponible'}</pre>
-            <a href="?page=test" class="btn">Ir a página de prueba</a>
-            <a href="?page=login" class="btn">Volver al inicio</a>
-          </div>
-        </body>
-      </html>
-    `);
-
-    return errorHtml;
+    Logger.log(`❌ Error en doGet: ${error.message}`);
+    Logger.log(`Stack: ${error.stack}`);
+    return ContentService.createTextOutput('Error: ' + error.message);
   }
 }
 
 /**
- * Incluye archivos parciales (CSS, JS)
- * @param {string} filename - Nombre del archivo
- * @returns {string} Contenido del archivo
+ * Función para verificar versión desplegada
  */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+function obtenerVersion() {
+  return {
+    exito: true,
+    version: '2.0.0',
+    fecha: '2026-01-22',
+    mensaje: 'Reestructuración simplificada - Un solo archivo Index.html'
+  };
 }
 
 // ============================================
