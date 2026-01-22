@@ -450,6 +450,210 @@
     </div>
   </div>
 
+  <!-- Modal: Detalle de Reparación -->
+  <div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-tools"></i> <span id="detalleResguardo">Reparación</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Información Básica -->
+          <div class="card mb-4">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h6 class="text-muted mb-2">Cliente</h6>
+                  <p class="mb-1"><strong id="detalleCliente">-</strong></p>
+                  <p class="mb-1"><i class="fas fa-phone"></i> <span id="detalleTelefono">-</span></p>
+                  <p class="mb-0"><i class="fas fa-envelope"></i> <span id="detalleEmail">-</span></p>
+                </div>
+                <div class="col-md-6">
+                  <h6 class="text-muted mb-2">Equipo</h6>
+                  <p class="mb-1"><strong id="detalleEquipo">-</strong></p>
+                  <p class="mb-1"><small class="text-muted">Síntoma:</small> <span id="detalleSintoma">-</span></p>
+                  <p class="mb-0"><small class="text-muted">Fecha recepción:</small> <span id="detalleFechaRecepcion">-</span></p>
+                </div>
+              </div>
+              <hr>
+              <div class="row">
+                <div class="col-md-12">
+                  <h6 class="text-muted mb-2">Estado Actual</h6>
+                  <h4><span id="detalleEstadoBadge" class="badge bg-info">-</span></h4>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Timeline Visual -->
+          <div class="card mb-4">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fas fa-stream"></i> Progreso de la Reparación</h6>
+            </div>
+            <div class="card-body">
+              <div class="timeline" id="timelineContainer">
+                <!-- Se genera dinámicamente -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Card de Acción -->
+          <div id="accionContainer">
+            <!-- Se genera dinámicamente según el estado -->
+          </div>
+
+          <!-- Tabs de Información -->
+          <ul class="nav nav-tabs mt-4" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabInfo">Información</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorial">Historial</button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabObservaciones">Observaciones</button>
+            </li>
+          </ul>
+          <div class="tab-content border border-top-0 p-3">
+            <div class="tab-pane fade show active" id="tabInfo">
+              <div id="infoDetallada">
+                <!-- Se genera dinámicamente -->
+              </div>
+            </div>
+            <div class="tab-pane fade" id="tabHistorial">
+              <div id="historialCambios">
+                <p class="text-muted">Historial de cambios de estado (próximamente)</p>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="tabObservaciones">
+              <div id="observacionesLista">
+                <p class="text-muted" id="observacionesTexto">Sin observaciones</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Elaborar Presupuesto (Fase 2) -->
+  <div class="modal fade" id="modalElaborarPresupuesto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-file-invoice-dollar"></i> Elaborar Presupuesto
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            <strong>Fase 2:</strong> Completar datos del presupuesto elaborado por el técnico
+          </div>
+          <form id="formElaborarPresupuesto">
+            <!-- Responsable y Fecha -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-user-tie"></i> Responsable del Presupuesto
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Responsable *</label>
+                <select class="form-select" id="responsablePresupuesto" required>
+                  <option value="">Seleccione...</option>
+                  <? TECNICOS.forEach(function(tecnico) { ?>
+                    <option value="<?= tecnico ?>"><?= tecnico ?></option>
+                  <? }); ?>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha de Elaboración *</label>
+                <input type="date" class="form-control" id="fechaElaboracion" required>
+              </div>
+            </div>
+
+            <!-- Costos -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-euro-sign"></i> Costos de la Reparación
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Costo Reparación (sin IVA) *</label>
+                <div class="input-group">
+                  <span class="input-group-text">€</span>
+                  <input type="number" step="0.01" class="form-control" id="costoReparacion" placeholder="0.00" required onchange="calcularGanancia()">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Costo Pieza (si aplica)</label>
+                <div class="input-group">
+                  <span class="input-group-text">€</span>
+                  <input type="number" step="0.01" class="form-control" id="costoPieza" placeholder="0.00" onchange="calcularGanancia()">
+                </div>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Ganancia Neta (Calculada)</label>
+                <div class="input-group">
+                  <span class="input-group-text">€</span>
+                  <input type="number" step="0.01" class="form-control" id="gananciaNeta" placeholder="0.00" readonly>
+                </div>
+                <small class="text-muted">Se calcula automáticamente</small>
+              </div>
+            </div>
+
+            <!-- Información de Pieza (Opcional) -->
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="necesitaPieza" onchange="toggleSeccionPieza()">
+              <label class="form-check-label" for="necesitaPieza">
+                <strong>Requiere compra de pieza</strong>
+              </label>
+            </div>
+
+            <div id="seccionPieza" style="display: none;">
+              <h6 class="text-primary mb-3">
+                <i class="fas fa-box"></i> Información de Pieza
+              </h6>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Responsable de Compra</label>
+                  <select class="form-select" id="responsableCompra">
+                    <option value="">Seleccione...</option>
+                    <? TECNICOS.forEach(function(tecnico) { ?>
+                      <option value="<?= tecnico ?>"><?= tecnico ?></option>
+                    <? }); ?>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Proveedor</label>
+                  <select class="form-select" id="proveedor">
+                    <option value="">Seleccione...</option>
+                    <? PROVEEDORES.forEach(function(prov) { ?>
+                      <option value="<?= prov ?>"><?= prov ?></option>
+                    <? }); ?>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarPresupuesto()">
+            <i class="fas fa-paper-plane"></i> Enviar Presupuesto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -735,7 +939,7 @@
         const dias = calcularDias(rep.fechaElaboracionPpto);
         const pieza = rep.pieza && rep.pieza.estadoPedido ? `<span class="badge bg-warning">${rep.pieza.estadoPedido}</span>` : '-';
         const badge = obtenerBadgeEstado(rep.estado);
-        html += `<tr style="cursor: pointer;"><td><strong>${rep.resguardo}</strong></td><td>${rep.cliente.nombre}<br><small class="text-muted">${rep.cliente.telefono}</small></td><td>${rep.equipo.modelo}</td><td>${badge}</td><td><small>${rep.tecnico || '-'}</small></td><td>${pieza}</td><td>${dias >= 0 ? dias + 'd' : '-'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="alert('Detalle de reparación en desarrollo')"><i class="fas fa-eye"></i></button></td></tr>`;
+        html += `<tr><td><strong>${rep.resguardo}</strong></td><td>${rep.cliente.nombre}<br><small class="text-muted">${rep.cliente.telefono}</small></td><td>${rep.equipo.modelo}</td><td>${badge}</td><td><small>${rep.tecnico || '-'}</small></td><td>${pieza}</td><td>${dias >= 0 ? dias + 'd' : '-'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="abrirModalDetalle('${rep.resguardo}')"><i class="fas fa-eye"></i> Ver</button></td></tr>`;
       });
       tbody.innerHTML = html;
     }
@@ -891,6 +1095,377 @@
 
     function mostrarExito(mensaje) {
       alert('Éxito: ' + mensaje);
+    }
+
+    // ========================================
+    // MODAL DE DETALLE
+    // ========================================
+
+    let reparacionActual = null;
+    let modalDetalle;
+    let modalElaborarPresupuesto;
+
+    async function abrirModalDetalle(resguardo) {
+      try {
+        console.log('🔵 Abriendo detalle de:', resguardo);
+
+        // Buscar la reparación en el array actual
+        const rep = reparacionesActuales.find(r => r.resguardo === resguardo);
+
+        if (!rep) {
+          // Si no está en la lista actual, obtenerla del backend
+          const resultado = await API.obtenerReparacion(resguardo);
+          if (resultado.exito) {
+            reparacionActual = resultado.reparacion;
+          } else {
+            mostrarError('No se pudo cargar la reparación');
+            return;
+          }
+        } else {
+          reparacionActual = rep;
+        }
+
+        // Llenar datos básicos
+        document.getElementById('detalleResguardo').textContent = reparacionActual.resguardo;
+        document.getElementById('detalleCliente').textContent = reparacionActual.cliente.nombre;
+        document.getElementById('detalleTelefono').textContent = reparacionActual.cliente.telefono;
+        document.getElementById('detalleEmail').textContent = reparacionActual.cliente.email || 'No especificado';
+        document.getElementById('detalleEquipo').textContent = reparacionActual.equipo.modelo;
+        document.getElementById('detalleSintoma').textContent = reparacionActual.equipo.sintoma || 'No especificado';
+        document.getElementById('detalleFechaRecepcion').textContent = reparacionActual.fecha ? formatearFecha(reparacionActual.fecha) : '-';
+
+        // Badge de estado
+        const badge = obtenerBadgeEstado(reparacionActual.estado);
+        document.getElementById('detalleEstadoBadge').outerHTML = badge;
+
+        // Renderizar timeline
+        renderizarTimeline(reparacionActual);
+
+        // Renderizar acción contextual
+        renderizarAccion(reparacionActual);
+
+        // Renderizar información detallada
+        renderizarInfoDetallada(reparacionActual);
+
+        // Renderizar observaciones
+        if (reparacionActual.observaciones && reparacionActual.observaciones.length > 0) {
+          let obsHtml = '<ul class="list-unstyled">';
+          reparacionActual.observaciones.forEach(obs => {
+            obsHtml += `<li class="mb-2"><i class="fas fa-comment"></i> ${obs}</li>`;
+          });
+          obsHtml += '</ul>';
+          document.getElementById('observacionesTexto').innerHTML = obsHtml;
+        } else {
+          document.getElementById('observacionesTexto').innerHTML = '<p class="text-muted">Sin observaciones</p>';
+        }
+
+        // Abrir modal
+        if (!modalDetalle) {
+          modalDetalle = new bootstrap.Modal(document.getElementById('modalDetalle'));
+        }
+        modalDetalle.show();
+
+      } catch (error) {
+        console.error('❌ Error abriendo modal detalle:', error);
+        mostrarError('Error al cargar el detalle de la reparación');
+      }
+    }
+
+    function renderizarTimeline(rep) {
+      const container = document.getElementById('timelineContainer');
+      const estado = rep.estado;
+
+      let html = '<div class="d-flex justify-content-between align-items-center">';
+
+      // Fase 1: Recepción
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas fa-check"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Recepción</strong></p>
+        <p class="text-muted small">${formatearFecha(rep.fecha)}</p>
+      </div>`;
+
+      // Línea conectora
+      html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
+
+      // Fase 2: Presupuesto
+      const fase2Completada = ['Presupuesto Enviado', 'Presupuesto Aceptado', 'Presupuesto Rechazado', 'Pieza Pendiente', 'Pieza Entregada', 'En Reparación', 'Reparado', 'No tiene Reparación'].includes(estado);
+      const fase2EnCurso = estado === 'Presupuesto Pendiente';
+
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle ${fase2Completada ? 'bg-success' : fase2EnCurso ? 'bg-warning' : 'bg-secondary'} text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas ${fase2Completada ? 'fa-check' : fase2EnCurso ? 'fa-hourglass-half' : 'fa-circle'}"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Presupuesto</strong></p>
+        <p class="text-muted small">${rep.fechaElaboracionPpto ? formatearFecha(rep.fechaElaboracionPpto) : '-'}</p>
+      </div>`;
+
+      html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
+
+      // Fase 3: Respuesta
+      const fase3Completada = ['Presupuesto Aceptado', 'Presupuesto Rechazado', 'Pieza Pendiente', 'Pieza Entregada', 'En Reparación', 'Reparado', 'No tiene Reparación'].includes(estado);
+      const fase3EnCurso = estado === 'Presupuesto Enviado';
+
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle ${fase3Completada ? 'bg-success' : fase3EnCurso ? 'bg-warning' : 'bg-secondary'} text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas ${fase3Completada ? 'fa-check' : fase3EnCurso ? 'fa-hourglass-half' : 'fa-circle'}"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Respuesta</strong></p>
+        <p class="text-muted small">${rep.presupuesto?.fechaAceptacion ? formatearFecha(rep.presupuesto.fechaAceptacion) : '-'}</p>
+      </div>`;
+
+      html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
+
+      // Fase 4: Pieza (opcional)
+      const necesitaPieza = rep.pieza && rep.pieza.estadoPedido;
+      const fase4Completada = ['Pieza Entregada', 'En Reparación', 'Reparado', 'No tiene Reparación'].includes(estado);
+      const fase4EnCurso = estado === 'Pieza Pendiente';
+
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle ${fase4Completada ? 'bg-success' : fase4EnCurso ? 'bg-warning' : necesitaPieza ? 'bg-secondary' : 'bg-light'} ${necesitaPieza ? 'text-white' : 'text-muted'} d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas ${fase4Completada ? 'fa-check' : fase4EnCurso ? 'fa-hourglass-half' : 'fa-box'}"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Pieza</strong></p>
+        <p class="text-muted small">${necesitaPieza ? (rep.pieza.fechaEntrega ? formatearFecha(rep.pieza.fechaEntrega) : 'Pendiente') : 'N/A'}</p>
+      </div>`;
+
+      html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
+
+      // Fase 5: Reparación
+      const fase5Completada = ['Reparado', 'No tiene Reparación'].includes(estado);
+      const fase5EnCurso = estado === 'En Reparación';
+
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle ${fase5Completada ? 'bg-success' : fase5EnCurso ? 'bg-warning' : 'bg-secondary'} text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas ${fase5Completada ? 'fa-check' : fase5EnCurso ? 'fa-hourglass-half' : 'fa-wrench'}"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Reparación</strong></p>
+        <p class="text-muted small">${rep.fechaReparacion ? formatearFecha(rep.fechaReparacion) : '-'}</p>
+      </div>`;
+
+      html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
+
+      // Fase 6: Entrega
+      const fase6Completada = rep.recogida && rep.recogida.estadoRecogida === 'ENTREGADO';
+
+      html += `<div class="text-center" style="flex: 1;">
+        <div class="rounded-circle ${fase6Completada ? 'bg-success' : 'bg-secondary'} text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+          <i class="fas ${fase6Completada ? 'fa-check' : 'fa-handshake'}"></i>
+        </div>
+        <p class="mt-2 mb-0 small"><strong>Entrega</strong></p>
+        <p class="text-muted small">${rep.recogida?.fechaRecogida ? formatearFecha(rep.recogida.fechaRecogida) : '-'}</p>
+      </div>`;
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function renderizarAccion(rep) {
+      const container = document.getElementById('accionContainer');
+      const estado = rep.estado;
+      let html = '';
+
+      // Fase 2: Presupuesto Pendiente -> Elaborar Presupuesto
+      if (estado === 'Presupuesto Pendiente') {
+        html = `
+          <div class="card border-primary">
+            <div class="card-body bg-primary bg-opacity-10">
+              <h5 class="card-title text-primary">
+                <i class="fas fa-file-invoice-dollar"></i> Acción Requerida: Elaborar Presupuesto
+              </h5>
+              <p class="card-text">El equipo ha sido recibido. El siguiente paso es elaborar el presupuesto de reparación.</p>
+              <p class="mb-0"><i class="fas fa-clock"></i> <strong>Límite:</strong> 24 horas desde la recepción</p>
+              <hr>
+              <button class="btn btn-primary" onclick="abrirModalElaborarPresupuesto()">
+                <i class="fas fa-edit"></i> Elaborar Presupuesto
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      // Fase 3: Presupuesto Enviado -> Esperando respuesta
+      else if (estado === 'Presupuesto Enviado') {
+        html = `
+          <div class="card border-info">
+            <div class="card-body bg-info bg-opacity-10">
+              <h5 class="card-title text-info">
+                <i class="fas fa-hourglass-half"></i> Esperando Respuesta del Cliente
+              </h5>
+              <p class="card-text">El presupuesto ha sido enviado. Esperando aceptación o rechazo del cliente.</p>
+              <hr>
+              <button class="btn btn-success me-2" onclick="alert('Funcionalidad en desarrollo')">
+                <i class="fas fa-check"></i> Cliente Aceptó
+              </button>
+              <button class="btn btn-danger" onclick="alert('Funcionalidad en desarrollo')">
+                <i class="fas fa-times"></i> Cliente Rechazó
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      // Otras fases (próximamente)
+      else {
+        html = `
+          <div class="card border-secondary">
+            <div class="card-body">
+              <p class="text-muted mb-0">
+                <i class="fas fa-info-circle"></i>
+                Estado actual: <strong>${estado}</strong>. Acciones disponibles próximamente.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderizarInfoDetallada(rep) {
+      const container = document.getElementById('infoDetallada');
+      let html = '<div class="row">';
+
+      // Columna 1: Datos del cliente y equipo
+      html += '<div class="col-md-6">';
+      html += '<h6 class="text-primary mb-3">Datos de Recepción</h6>';
+      html += '<table class="table table-sm">';
+      html += `<tr><td><strong>Resguardo:</strong></td><td>${rep.resguardo}</td></tr>`;
+      html += `<tr><td><strong>Fecha Recepción:</strong></td><td>${formatearFecha(rep.fecha)}</td></tr>`;
+      html += `<tr><td><strong>Cliente:</strong></td><td>${rep.cliente.nombre}</td></tr>`;
+      html += `<tr><td><strong>Teléfono:</strong></td><td>${rep.cliente.telefono}</td></tr>`;
+      html += `<tr><td><strong>Email:</strong></td><td>${rep.cliente.email || '-'}</td></tr>`;
+      html += `<tr><td><strong>Equipo:</strong></td><td>${rep.equipo.modelo}</td></tr>`;
+      html += `<tr><td><strong>Síntoma:</strong></td><td>${rep.equipo.sintoma || '-'}</td></tr>`;
+      html += '</table>';
+      html += '</div>';
+
+      // Columna 2: Datos del presupuesto y reparación
+      html += '<div class="col-md-6">';
+      if (rep.presupuesto) {
+        html += '<h6 class="text-primary mb-3">Presupuesto</h6>';
+        html += '<table class="table table-sm">';
+        html += `<tr><td><strong>Responsable:</strong></td><td>${rep.responsablePresupuesto || '-'}</td></tr>`;
+        html += `<tr><td><strong>Fecha Elaboración:</strong></td><td>${rep.fechaElaboracionPpto ? formatearFecha(rep.fechaElaboracionPpto) : '-'}</td></tr>`;
+        html += `<tr><td><strong>Costo Reparación:</strong></td><td>${rep.presupuesto.costoReparacion ? '€' + rep.presupuesto.costoReparacion : '-'}</td></tr>`;
+        html += `<tr><td><strong>Costo Pieza:</strong></td><td>${rep.presupuesto.costoPieza ? '€' + rep.presupuesto.costoPieza : '-'}</td></tr>`;
+        html += `<tr><td><strong>Ganancia Neta:</strong></td><td>${rep.presupuesto.gananciaNeta ? '€' + rep.presupuesto.gananciaNeta : '-'}</td></tr>`;
+        html += '</table>';
+      }
+      if (rep.tecnico || rep.fechaReparacion) {
+        html += '<h6 class="text-primary mb-3 mt-3">Reparación</h6>';
+        html += '<table class="table table-sm">';
+        html += `<tr><td><strong>Técnico:</strong></td><td>${rep.tecnico || '-'}</td></tr>`;
+        html += `<tr><td><strong>Fecha Reparación:</strong></td><td>${rep.fechaReparacion ? formatearFecha(rep.fechaReparacion) : '-'}</td></tr>`;
+        html += '</table>';
+      }
+      html += '</div>';
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function formatearFecha(fecha) {
+      if (!fecha) return '-';
+      const d = new Date(fecha);
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    // ========================================
+    // MODAL ELABORAR PRESUPUESTO (FASE 2)
+    // ========================================
+
+    function abrirModalElaborarPresupuesto() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      // Establecer fecha de hoy por defecto
+      document.getElementById('fechaElaboracion').value = new Date().toISOString().split('T')[0];
+
+      // Limpiar formulario
+      document.getElementById('formElaborarPresupuesto').reset();
+      document.getElementById('necesitaPieza').checked = false;
+      document.getElementById('seccionPieza').style.display = 'none';
+
+      // Abrir modal
+      if (!modalElaborarPresupuesto) {
+        modalElaborarPresupuesto = new bootstrap.Modal(document.getElementById('modalElaborarPresupuesto'));
+      }
+      modalElaborarPresupuesto.show();
+    }
+
+    function toggleSeccionPieza() {
+      const necesita = document.getElementById('necesitaPieza').checked;
+      document.getElementById('seccionPieza').style.display = necesita ? 'block' : 'none';
+    }
+
+    function calcularGanancia() {
+      const costoReparacion = parseFloat(document.getElementById('costoReparacion').value) || 0;
+      const costoPieza = parseFloat(document.getElementById('costoPieza').value) || 0;
+
+      // Ganancia = Costo Reparación - Costo Pieza
+      const ganancia = costoReparacion - costoPieza;
+
+      document.getElementById('gananciaNeta').value = ganancia.toFixed(2);
+    }
+
+    async function guardarPresupuesto() {
+      try {
+        if (!reparacionActual) {
+          mostrarError('No hay reparación seleccionada');
+          return;
+        }
+
+        // Obtener datos del formulario
+        const datos = {
+          responsablePresupuesto: document.getElementById('responsablePresupuesto').value,
+          fechaElaboracion: document.getElementById('fechaElaboracion').value,
+          costoReparacion: parseFloat(document.getElementById('costoReparacion').value),
+          costoPieza: parseFloat(document.getElementById('costoPieza').value) || 0,
+          gananciaNeta: parseFloat(document.getElementById('gananciaNeta').value),
+          necesitaPieza: document.getElementById('necesitaPieza').checked,
+          responsableCompra: document.getElementById('responsableCompra').value,
+          proveedor: document.getElementById('proveedor').value
+        };
+
+        // Validar campos obligatorios
+        if (!datos.responsablePresupuesto) {
+          mostrarError('El responsable del presupuesto es obligatorio');
+          return;
+        }
+        if (!datos.fechaElaboracion) {
+          mostrarError('La fecha de elaboración es obligatoria');
+          return;
+        }
+        if (!datos.costoReparacion || datos.costoReparacion <= 0) {
+          mostrarError('El costo de reparación debe ser mayor a 0');
+          return;
+        }
+
+        console.log('🔵 Guardando presupuesto:', datos);
+
+        // Llamar a la API
+        const resultado = await API.actualizarPresupuesto(reparacionActual.resguardo, datos);
+        console.log('🔵 Resultado:', resultado);
+
+        if (resultado && resultado.exito) {
+          modalElaborarPresupuesto.hide();
+          modalDetalle.hide();
+          mostrarExito('Presupuesto enviado exitosamente');
+
+          // Recargar datos
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al guardar el presupuesto');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al guardar el presupuesto: ' + error.message);
+      }
     }
 
     // Exponer funciones globalmente para pruebas

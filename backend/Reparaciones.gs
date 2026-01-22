@@ -171,25 +171,14 @@ function actualizarPresupuesto(resguardo, presupuesto) {
     const col = SHEET_CONFIG.columnas;
     const ahora = new Date();
 
-    // Actualizar costos
-    if (presupuesto.costoReparacion !== undefined) {
-      sheet.getRange(numFila, col.costoReparacionSinIVA + 1).setValue(presupuesto.costoReparacion);
+    // FASE 2: Completar columnas del presupuesto
+
+    // Columna C: Responsable de presupuesto
+    if (presupuesto.responsablePresupuesto !== undefined) {
+      sheet.getRange(numFila, col.fechaResponsablePpto + 1).setValue(presupuesto.responsablePresupuesto);
     }
 
-    if (presupuesto.costoPieza !== undefined) {
-      sheet.getRange(numFila, col.costoPieza + 1).setValue(presupuesto.costoPieza);
-    }
-
-    // Calcular ganancia neta (simplificado)
-    if (presupuesto.costoReparacion !== undefined || presupuesto.costoPieza !== undefined) {
-      const costoRep = presupuesto.costoReparacion || sheet.getRange(numFila, col.costoReparacionSinIVA + 1).getValue() || 0;
-      const costoPza = presupuesto.costoPieza || sheet.getRange(numFila, col.costoPieza + 1).getValue() || 0;
-      const ganancia = costoRep + costoPza; // Simplificado: precio total
-
-      sheet.getRange(numFila, col.gananciaNeta + 1).setValue(ganancia);
-    }
-
-    // Actualizar fechas
+    // Columna D: Fecha de elaboración
     if (presupuesto.fechaElaboracion !== undefined) {
       sheet.getRange(numFila, col.fechaElaboracionPpto + 1).setValue(presupuesto.fechaElaboracion);
 
@@ -199,6 +188,35 @@ function actualizarPresupuesto(resguardo, presupuesto) {
       sheet.getRange(numFila, col.fechaLimitePpto + 1).setValue(fechaLimite);
     }
 
+    // Columna N: Costo reparación sin IVA
+    if (presupuesto.costoReparacion !== undefined) {
+      sheet.getRange(numFila, col.costoReparacionSinIVA + 1).setValue(presupuesto.costoReparacion);
+    }
+
+    // Columna O: Costo pieza
+    if (presupuesto.costoPieza !== undefined) {
+      sheet.getRange(numFila, col.costoPieza + 1).setValue(presupuesto.costoPieza);
+    }
+
+    // Columna P: Ganancia neta (usar la calculada del frontend)
+    if (presupuesto.gananciaNeta !== undefined) {
+      sheet.getRange(numFila, col.gananciaNeta + 1).setValue(presupuesto.gananciaNeta);
+    }
+
+    // Si necesita pieza, completar columnas Q y R
+    if (presupuesto.necesitaPieza) {
+      // Columna Q: Responsable de compra
+      if (presupuesto.responsableCompra !== undefined) {
+        sheet.getRange(numFila, col.responsableCompra + 1).setValue(presupuesto.responsableCompra);
+      }
+
+      // Columna R: Proveedor
+      if (presupuesto.proveedor !== undefined) {
+        sheet.getRange(numFila, col.proveedor + 1).setValue(presupuesto.proveedor);
+      }
+    }
+
+    // Otras actualizaciones (para fases posteriores)
     if (presupuesto.fechaAceptacion !== undefined) {
       sheet.getRange(numFila, col.fechaAceptacionPpto + 1).setValue(presupuesto.fechaAceptacion);
     }
@@ -211,17 +229,22 @@ function actualizarPresupuesto(resguardo, presupuesto) {
     const costoTotal = (presupuesto.costoReparacion || 0) + (presupuesto.costoPieza || 0);
     agregarObservacion(resguardo, `Presupuesto actualizado: ${formatearMoneda(costoTotal)}`);
 
+    // IMPORTANTE: Cambiar estado a "Presupuesto Enviado"
+    cambiarEstadoReparacion(resguardo, "Presupuesto Enviado", {
+      observacion: "Presupuesto enviado al cliente"
+    });
+
     // Invalidar caché
     invalidarCaches();
 
-    registrarLog('actualizar_presupuesto', 'Presupuesto actualizado', {
+    registrarLog('actualizar_presupuesto', 'Presupuesto actualizado y enviado', {
       resguardo: resguardo,
       presupuesto: presupuesto
     });
 
     return {
       exito: true,
-      mensaje: "Presupuesto actualizado correctamente"
+      mensaje: "Presupuesto enviado correctamente"
     };
 
   } catch (error) {
