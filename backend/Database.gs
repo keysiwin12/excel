@@ -59,107 +59,108 @@ function getAllData() {
 // ============================================
 
 /**
- * Crea una nueva reparación
+ * Crea una nueva reparación (Fase 1 - Recepción)
  * @param {Object} datos - Objeto con los datos de la reparación
- * @returns {Object} Resultado con el resguardo generado
+ * @returns {Object} Resultado con el resguardo
  */
 function crearReparacion(datos) {
   try {
     const sheet = getSheet();
 
-    // Generar resguardo único
-    const resguardo = generarResguardo();
-
-    // Timestamp
-    const ahora = new Date();
-
-    // Calcular fecha límite presupuesto (7 días después si no se especifica)
-    const fechaLimite = datos.fechaElaboracionPpto
-      ? new Date(new Date(datos.fechaElaboracionPpto).getTime() + 7 * 24 * 60 * 60 * 1000)
-      : null;
-
-    // Procesar datos de pieza si existen
-    let costoPieza = 0;
-    let proveedor = "";
-    let enlaceCompra = "";
-    let estadoPedido = "";
-    let fechaEntregaPieza = null;
-    let nombrePieza = "";
-
-    if (datos.pieza) {
-      nombrePieza = datos.pieza.nombre || "";
-      costoPieza = datos.pieza.costo || 0;
-      proveedor = datos.pieza.proveedor || "";
-      enlaceCompra = datos.pieza.enlaceCompra || "";
-      estadoPedido = datos.pieza.estadoPedido || "Pendiente";
-      fechaEntregaPieza = datos.pieza.fechaEntrega ? new Date(datos.pieza.fechaEntrega) : null;
-
-      Logger.log(`🔧 Pieza agregada: ${nombrePieza} - ${estadoPedido}`);
+    // Usar resguardo de Factusol (obligatorio)
+    const resguardo = datos.resguardo;
+    if (!resguardo) {
+      return {
+        exito: false,
+        errores: ['El número de resguardo es obligatorio']
+      };
     }
 
+    // Verificar que el resguardo no exista ya
+    const existente = encontrarFilaPorResguardo(resguardo);
+    if (existente) {
+      return {
+        exito: false,
+        errores: [`El resguardo ${resguardo} ya existe en el sistema`]
+      };
+    }
+
+    // Fecha de recepción (del parte de Factusol)
+    const fechaRecepcion = datos.fechaRecepcion ? new Date(datos.fechaRecepcion) : new Date();
+
+    // Estado inicial: "Presupuesto Pendiente" o "Garantía"
+    const estadoInicial = datos.estado || "Presupuesto Pendiente";
+
     // Construir fila completa (45 columnas según estructura real)
+    // Fase 1: Solo columnas A, B, G, H, I, J, K, L
     const fila = [
-      resguardo,                                  // Col 1 (0) - Resguardo de Recepcion
-      ahora,                                      // Col 2 (1) - Fecha
-      "",                                         // Col 3 (2) - Responsable de presupuesto
-      datos.fechaElaboracionPpto || null,         // Col 4 (3) - Fecha de Elaboración de Presupuesto
-      datos.tecnico || "",                        // Col 5 (4) - Técnico que ha reparado el equipo
-      null,                                       // Col 6 (5) - Fecha de Reparación
-      datos.clienteNombre || "",                  // Col 7 (6) - Nombre de Cliente
-      datos.clienteTelefono || "",                // Col 8 (7) - Telefono
-      datos.clienteEmail || "",                   // Col 9 (8) - Correo electrónico
-      datos.equipoModelo || "",                   // Col 10 (9) - Modelo/Marca Equipo
-      datos.sintoma || "",                        // Col 11 (10) - Síntoma / Reparación
-      datos.estado || "En Diagnóstico",           // Col 12 (11) - Estado
-      null,                                       // Col 13 (12) - TIEMPO (DÍAS) DE ENTREGA DE EQUIPO
-      datos.costoReparacion || 0,                 // Col 14 (13) - Costo de Reparación sin IVA
-      costoPieza,                                 // Col 15 (14) - COSTO DE PIEZA
-      null,                                       // Col 16 (15) - Ganancia Neta
-      datos.tecnico || "",                        // Col 17 (16) - Responsable de Compra
-      proveedor,                                  // Col 18 (17) - PROVEEDOR
-      enlaceCompra,                               // Col 19 (18) - ENLACES DE COMPRA
-      "",                                         // Col 20 (19) - NÚMERO DE PEDIDO DE COMPRA
-      estadoPedido ? ahora : null,                // Col 21 (20) - FECHA DE PEDIDO
-      estadoPedido,                               // Col 22 (21) - Estado de Pedido
-      false,                                      // Col 23 (22) - Aviso Wasap Estado
-      fechaLimite,                                // Col 24 (23) - Fecha Límite Presupuesto
-      false,                                      // Col 25 (24) - Alerta envío de presupuesto
-      "",                                         // Col 26 (25) - Motivo Rechazo de Presupuesto
-      null,                                       // Col 27 (26) - FECHA ACEPTACION DE PRESUPUESTO
-      fechaEntregaPieza,                          // Col 28 (27) - FECHA DE ENTREGA (pieza)
-      false,                                      // Col 29 (28) - CONTACTAR PROVEEDOR
-      null,                                       // Col 30 (29) - FECHA CONTACTO 1
-      null,                                       // Col 31 (30) - RECORDATORIO P1
-      "",                                         // Col 32 (31) - NÚMERO DE FACTURA
-      null,                                       // Col 33 (32) - FECHA DE RECOGIDA POR EL CLIENTE
-      "PENDIENTE",                                // Col 34 (33) - ESTADO DE RECOGIDA
-      datos.equipoMarca || "",                    // Col 35 (34) - FICHA /MARCA
-      false,                                      // Col 36 (35) - Colocó Reseña
-      datos.observaciones || "",                  // Col 37 (36) - OBSERVACIONES
-      false,                                      // Col 38 (37) - Envío de Encuesta
-      false,                                      // Col 39 (38) - Envío de enlace para reseña
-      false,                                      // Col 40 (39) - Ingresó Reseña?
-      "",                                         // Col 41 (40) - Obs (Entrega de Equipos)
-      "",                                         // Col 42 (41) - (vacío)
-      null,                                       // Col 43 (42) - Fecha Último Recordatorio
-      "",                                         // Col 44 (43) - Tipo Último Recordatorio
-      0                                           // Col 45 (44) - Contador Recordatorios Recojo
+      resguardo,                                  // Col 1 (0) - A: Resguardo de Recepcion
+      fechaRecepcion,                             // Col 2 (1) - B: Fecha
+      "",                                         // Col 3 (2) - C: Responsable de presupuesto
+      null,                                       // Col 4 (3) - D: Fecha de Elaboración de Presupuesto
+      "",                                         // Col 5 (4) - E: Técnico que ha reparado el equipo
+      null,                                       // Col 6 (5) - F: Fecha de Reparación
+      datos.clienteNombre || "",                  // Col 7 (6) - G: Nombre de Cliente
+      datos.clienteTelefono || "",                // Col 8 (7) - H: Telefono
+      datos.clienteEmail || "",                   // Col 9 (8) - I: Correo electrónico
+      datos.equipoModelo || "",                   // Col 10 (9) - J: Modelo/Marca Equipo
+      datos.sintoma || "",                        // Col 11 (10) - K: Síntoma / Reparación
+      estadoInicial,                              // Col 12 (11) - L: Estado
+      null,                                       // Col 13 (12) - M: TIEMPO (DÍAS) DE ENTREGA DE EQUIPO
+      0,                                          // Col 14 (13) - N: Costo de Reparación sin IVA
+      0,                                          // Col 15 (14) - O: COSTO DE PIEZA
+      null,                                       // Col 16 (15) - P: Ganancia Neta
+      "",                                         // Col 17 (16) - Q: Responsable de Compra
+      "",                                         // Col 18 (17) - R: PROVEEDOR
+      "",                                         // Col 19 (18) - S: ENLACES DE COMPRA
+      "",                                         // Col 20 (19) - T: NÚMERO DE PEDIDO DE COMPRA
+      null,                                       // Col 21 (20) - U: FECHA DE PEDIDO
+      "",                                         // Col 22 (21) - V: Estado de Pedido
+      false,                                      // Col 23 (22) - W: Aviso Wasap Estado
+      null,                                       // Col 24 (23) - X: Fecha Límite Presupuesto
+      false,                                      // Col 25 (24) - Y: Alerta envío de presupuesto
+      "",                                         // Col 26 (25) - Z: Motivo Rechazo de Presupuesto
+      null,                                       // Col 27 (26) - AA: FECHA ACEPTACION DE PRESUPUESTO
+      null,                                       // Col 28 (27) - AB: FECHA DE ENTREGA (pieza)
+      false,                                      // Col 29 (28) - AC: CONTACTAR PROVEEDOR
+      null,                                       // Col 30 (29) - AD: FECHA CONTACTO 1
+      null,                                       // Col 31 (30) - AE: RECORDATORIO P1
+      "",                                         // Col 32 (31) - AF: NÚMERO DE FACTURA
+      null,                                       // Col 33 (32) - AG: FECHA DE RECOGIDA POR EL CLIENTE
+      "PENDIENTE",                                // Col 34 (33) - AH: ESTADO DE RECOGIDA
+      "",                                         // Col 35 (34) - AI: FICHA /MARCA
+      false,                                      // Col 36 (35) - AJ: Colocó Reseña
+      "",                                         // Col 37 (36) - AK: OBSERVACIONES
+      false,                                      // Col 38 (37) - AL: Envío de Encuesta
+      false,                                      // Col 39 (38) - AM: Envío de enlace para reseña
+      false,                                      // Col 40 (39) - AN: Ingresó Reseña?
+      "",                                         // Col 41 (40) - AO: Obs (Entrega de Equipos)
+      "",                                         // Col 42 (41) - AP: (vacío)
+      null,                                       // Col 43 (42) - AQ: Fecha Último Recordatorio
+      "",                                         // Col 44 (43) - AR: Tipo Último Recordatorio
+      0                                           // Col 45 (44) - AS: Contador Recordatorios Recojo
     ];
 
     // Agregar fila al final
     sheet.appendRow(fila);
 
-    Logger.log(`✅ Reparación creada: ${resguardo}`);
+    // Invalidar caché
+    CacheService.getScriptCache().remove('metricas-dashboard');
+
+    Logger.log(`✅ Reparación creada: ${resguardo} - Estado: ${estadoInicial}`);
 
     return {
       exito: true,
       resguardo: resguardo,
-      mensaje: `Reparación ${resguardo} creada exitosamente`
+      mensaje: `Recepción ${resguardo} registrada exitosamente`
     };
 
   } catch (error) {
     Logger.log(`❌ Error al crear reparación: ${error.message}`);
-    throw new Error(`Error al crear reparación: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
   }
 }
 
@@ -294,9 +295,9 @@ function obtenerMetricas() {
     // Calcular métricas
     const data = getAllData();
     const metricas = {
-      enDiagnostico: 0,
+      presupuestoPendiente: 0,
       esperandoPieza: 0,
-      reparando: 0,
+      enReparacion: 0,
       listos: 0,
       totalReparaciones: 0,
       alertas: []
@@ -313,10 +314,16 @@ function obtenerMetricas() {
       const estado = fila[SHEET_CONFIG.columnas.estado];
       const estadoRecogida = fila[SHEET_CONFIG.columnas.estadoRecogida];
 
-      // Contar por estado
-      if (estado === "En Diagnóstico") metricas.enDiagnostico++;
-      if (estado === "Esperando Pieza") metricas.esperandoPieza++;
-      if (estado === "Reparando") metricas.reparando++;
+      // Contar por estado (nuevos estados)
+      if (estado === "Presupuesto Pendiente" || estado === "Presupuesto Enviado") {
+        metricas.presupuestoPendiente++;
+      }
+      if (estado === "Pieza Pendiente") {
+        metricas.esperandoPieza++;
+      }
+      if (estado === "En Reparación" || estado === "Pieza Entregada" || estado === "Presupuesto Aceptado") {
+        metricas.enReparacion++;
+      }
 
       // Listos para recoger
       if ((estado === "Reparado" || estado === "No tiene Reparación" || estado === "Presupuesto Rechazado") &&
@@ -440,6 +447,10 @@ function actualizarReparacion(resguardo, datos) {
       sheet.getRange(numFila, col.tecnico + 1).setValue(datos.tecnico);
     }
 
+    if (datos.fechaReparacion !== undefined) {
+      sheet.getRange(numFila, col.fechaReparacion + 1).setValue(datos.fechaReparacion);
+    }
+
     if (datos.clienteNombre !== undefined) {
       sheet.getRange(numFila, col.nombreCliente + 1).setValue(datos.clienteNombre);
     }
@@ -475,8 +486,16 @@ function actualizarReparacion(resguardo, datos) {
       sheet.getRange(numFila, col.fechaElaboracionPpto + 1).setValue(datos.fechaElaboracionPpto);
     }
 
+    if (datos.fechaResponsablePpto !== undefined) {
+      sheet.getRange(numFila, col.fechaResponsablePpto + 1).setValue(datos.fechaResponsablePpto);
+    }
+
     if (datos.fechaAceptacionPpto !== undefined) {
       sheet.getRange(numFila, col.fechaAceptacionPpto + 1).setValue(datos.fechaAceptacionPpto);
+    }
+
+    if (datos.motivoRechazo !== undefined) {
+      sheet.getRange(numFila, col.motivoRechazo + 1).setValue(datos.motivoRechazo);
     }
 
     // Pieza/Pedido
@@ -519,6 +538,15 @@ function actualizarReparacion(resguardo, datos) {
 
     if (datos.numeroFactura !== undefined) {
       sheet.getRange(numFila, col.numeroFactura + 1).setValue(datos.numeroFactura);
+    }
+
+    // Ficha/Marca y Resena
+    if (datos.fichaMarca !== undefined) {
+      sheet.getRange(numFila, col.fichaMarca + 1).setValue(datos.fichaMarca);
+    }
+
+    if (datos.colocoResena !== undefined) {
+      sheet.getRange(numFila, col.colocoResena + 1).setValue(datos.colocoResena);
     }
 
     // Invalidar caché

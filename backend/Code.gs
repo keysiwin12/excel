@@ -12,9 +12,9 @@
 function obtenerVersion() {
   return {
     exito: true,
-    version: '1.3.2',
+    version: '1.4.0',
     fecha: '2025-01-21',
-    mensaje: 'Inyección via window variable en script tag'
+    mensaje: 'Métricas habilitadas + página de detalle de reparación'
   };
 }
 
@@ -59,6 +59,7 @@ function servirPagina(nombre) {
     if (nombre === 'dashboard') {
       Logger.log(`🔵 Pre-cargando datos para dashboard...`);
       try {
+        // Pre-cargar reparaciones
         const reparaciones = buscarReparaciones({}, 1, 50);
         const datosJSON = {
           exito: true,
@@ -67,16 +68,24 @@ function servirPagina(nombre) {
           pagina: 1,
           totalPaginas: reparaciones.totalPaginas || 1
         };
-        // JSON directo para inyectar en <script> tag
         template.REPARACIONES_INICIALES = JSON.stringify(datosJSON);
         Logger.log(`✓ Pre-cargadas ${reparaciones.total} reparaciones`);
+
+        // Pre-cargar métricas
+        const metricas = obtenerMetricas();
+        template.METRICAS_INICIALES = JSON.stringify(metricas);
+        Logger.log(`✓ Pre-cargadas métricas`);
       } catch (e) {
-        Logger.log(`⚠️ Error pre-cargando reparaciones: ${e.message}`);
+        Logger.log(`⚠️ Error pre-cargando datos: ${e.message}`);
         template.REPARACIONES_INICIALES = JSON.stringify({
           exito: false,
           error: e.message,
           resultados: [],
           total: 0
+        });
+        template.METRICAS_INICIALES = JSON.stringify({
+          exito: false,
+          error: e.message
         });
       }
     }

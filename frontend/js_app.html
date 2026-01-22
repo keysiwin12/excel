@@ -8,10 +8,12 @@ let modalNuevaReparacion;
 // Datos pre-cargados desde el servidor (inyectados por Apps Script)
 // Usar variable global inyectada directamente
 var DATOS_INICIALES = window._DATOS_PRECARGADOS || {"exito": false, "error": "No se pre-cargaron datos"};
+var METRICAS_INICIALES = window._METRICAS_PRECARGADAS || {"exito": false, "error": "No se pre-cargaron métricas"};
 
 window.onload = async function() {
   console.log('🔵 Dashboard: Iniciando carga...');
   console.log('🔵 Datos pre-cargados recibidos:', DATOS_INICIALES);
+  console.log('🔵 Métricas pre-cargadas recibidas:', METRICAS_INICIALES);
 
   try {
     // Sin autenticación por ahora - usar usuario genérico
@@ -19,6 +21,27 @@ window.onload = async function() {
     console.log('✅ Dashboard: Usuario genérico mostrado en navbar');
 
     console.log('🔵 Dashboard: Usando datos pre-cargados del servidor...');
+
+    // Renderizar métricas pre-cargadas
+    // NOTA: Las métricas vienen directamente, no envueltas en {exito, metricas}
+    if (METRICAS_INICIALES && METRICAS_INICIALES.presupuestoPendiente !== undefined) {
+      const m = METRICAS_INICIALES;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+      document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+      document.getElementById('metricListos').textContent = m.listos || 0;
+      console.log('✅ Dashboard: Métricas renderizadas');
+    } else if (METRICAS_INICIALES && METRICAS_INICIALES.exito && METRICAS_INICIALES.metricas) {
+      // Formato alternativo con wrapper
+      const m = METRICAS_INICIALES.metricas;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+      document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+      document.getElementById('metricListos').textContent = m.listos || 0;
+      console.log('✅ Dashboard: Métricas renderizadas (formato wrapper)');
+    } else {
+      console.warn('⚠️ Métricas no disponibles:', METRICAS_INICIALES);
+    }
 
     // Usar datos pre-cargados en lugar de llamar a la API
     if (DATOS_INICIALES && DATOS_INICIALES.exito) {
@@ -45,9 +68,9 @@ async function cargarMetricas() {
     const resultado = await API.obtenerMetricas();
     if (resultado.exito) {
       const m = resultado.metricas;
-      document.getElementById('metricDiagnostico').textContent = m.enDiagnostico || 0;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
       document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
-      document.getElementById('metricReparando').textContent = m.reparando || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
       document.getElementById('metricListos').textContent = m.listos || 0;
       if (m.alertas && m.alertas.length > 0) mostrarAlertas(m.alertas);
     }
@@ -156,7 +179,18 @@ function renderizarTablaReparaciones(reparaciones) {
 }
 
 function obtenerBadgeEstado(estado) {
-  const colores = {'En Diagnóstico': 'warning', 'Presupuesto Enviado': 'secondary', 'Presupuesto Aceptado': 'success', 'Esperando Pieza': 'info', 'Reparando': 'primary', 'Reparado': 'success', 'No tiene Reparación': 'secondary'};
+  const colores = {
+    'Presupuesto Pendiente': 'info',
+    'Garantía': 'purple',
+    'Presupuesto Enviado': 'secondary',
+    'Presupuesto Aceptado': 'success',
+    'Presupuesto Rechazado': 'danger',
+    'Pieza Pendiente': 'warning',
+    'Pieza Entregada': 'info',
+    'En Reparación': 'primary',
+    'Reparado': 'success',
+    'No tiene Reparación': 'secondary'
+  };
   const color = colores[estado] || 'secondary';
   return `<span class="badge bg-${color}">${estado}</span>`;
 }
@@ -210,83 +244,78 @@ function abrirModalNuevaReparacion() {
     modalNuevaReparacion = new bootstrap.Modal(document.getElementById('modalNuevaReparacion'));
   }
   document.getElementById('formNuevaReparacion').reset();
-  document.getElementById('seccionPieza').style.display = 'none';
-  document.getElementById('necesitaPieza').checked = false;
+  // Establecer fecha de hoy por defecto
+  document.getElementById('fechaRecepcion').value = new Date().toISOString().split('T')[0];
   modalNuevaReparacion.show();
-}
-
-function toggleSeccionPieza() {
-  const necesitaPieza = document.getElementById('necesitaPieza').checked;
-  const seccionPieza = document.getElementById('seccionPieza');
-  seccionPieza.style.display = necesitaPieza ? 'block' : 'none';
 }
 
 async function guardarNuevaReparacion() {
   try {
+    // Obtener estado inicial seleccionado
+    const estadoInicial = document.querySelector('input[name="estadoInicial"]:checked').value;
+
     const datos = {
-      clienteNombre: document.getElementById('clienteNombre').value,
-      clienteTelefono: document.getElementById('clienteTelefono').value,
-      clienteEmail: document.getElementById('clienteEmail').value,
-      equipoMarca: document.getElementById('equipoMarca').value,
-      equipoModelo: document.getElementById('equipoModelo').value,
-      sintoma: document.getElementById('sintoma').value,
-      tecnico: document.getElementById('tecnico').value,
-      estado: document.getElementById('estado').value,
-      observaciones: document.getElementById('observaciones').value
+      resguardo: document.getElementById('resguardo').value.trim(),
+      fechaRecepcion: document.getElementById('fechaRecepcion').value,
+      clienteNombre: document.getElementById('clienteNombre').value.trim(),
+      clienteTelefono: document.getElementById('clienteTelefono').value.trim(),
+      clienteEmail: document.getElementById('clienteEmail').value.trim(),
+      equipoModelo: document.getElementById('equipoModelo').value.trim(),
+      sintoma: document.getElementById('sintoma').value.trim(),
+      estado: estadoInicial
     };
 
     // Validar campos obligatorios
-    if (!datos.clienteNombre || !datos.clienteTelefono || !datos.equipoMarca || !datos.sintoma) {
-      mostrarError('Completa los campos obligatorios');
+    if (!datos.resguardo) {
+      mostrarError('El Nº de Resguardo es obligatorio');
       return;
     }
-
-    // Agregar datos de pieza si es necesario
-    const necesitaPieza = document.getElementById('necesitaPieza').checked;
-    if (necesitaPieza) {
-      const piezaNombre = document.getElementById('piezaNombre').value;
-      if (!piezaNombre) {
-        mostrarError('Debes especificar el nombre de la pieza');
-        return;
-      }
-
-      datos.pieza = {
-        nombre: piezaNombre,
-        proveedor: document.getElementById('piezaProveedor').value,
-        costo: parseFloat(document.getElementById('piezaCosto').value) || 0,
-        estadoPedido: document.getElementById('piezaEstadoPedido').value,
-        fechaEntrega: document.getElementById('piezaFechaEntrega').value,
-        enlaceCompra: document.getElementById('piezaEnlaceCompra').value
-      };
-
-      // Si necesita pieza, cambiar estado a "Esperando Pieza" si está en diagnóstico
-      if (datos.estado === 'En Diagnóstico') {
-        datos.estado = 'Esperando Pieza';
-      }
+    if (!datos.fechaRecepcion) {
+      mostrarError('La fecha de recepción es obligatoria');
+      return;
+    }
+    if (!datos.clienteNombre) {
+      mostrarError('El nombre del cliente es obligatorio');
+      return;
+    }
+    if (!datos.clienteTelefono) {
+      mostrarError('El teléfono del cliente es obligatorio');
+      return;
+    }
+    if (!datos.equipoModelo) {
+      mostrarError('El modelo/marca del equipo es obligatorio');
+      return;
+    }
+    if (!datos.sintoma) {
+      mostrarError('El síntoma/avería es obligatorio');
+      return;
     }
 
     const btn = event.target;
     const textoOriginal = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Guardando...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando...';
 
-    console.log('🔵 Guardando reparación:', datos);
+    console.log('🔵 Registrando recepción:', datos);
     const resultado = await API.crearReparacion(datos);
     console.log('🔵 Resultado crear:', resultado);
 
     if (resultado && resultado.exito) {
       modalNuevaReparacion.hide();
-      mostrarExito(`Reparación ${resultado.resguardo} creada exitosamente`);
-      await Promise.all([cargarMetricas(), cargarReparaciones()]);
+      mostrarExito(`Recepción ${datos.resguardo} registrada exitosamente`);
+      // Redirigir al dashboard para cargar datos frescos
+      setTimeout(() => {
+        window.location.href = '?page=dashboard';
+      }, 1500);
     } else {
-      mostrarError(resultado?.error || 'Error al crear');
+      mostrarError(resultado?.error || resultado?.errores?.join(', ') || 'Error al registrar');
       btn.disabled = false;
       btn.innerHTML = textoOriginal;
     }
   } catch (error) {
     console.error('❌ Error:', error);
     console.error('Stack:', error.stack);
-    mostrarError('Error al crear la reparación: ' + error.message);
+    mostrarError('Error al registrar la recepción: ' + error.message);
   }
 }
 

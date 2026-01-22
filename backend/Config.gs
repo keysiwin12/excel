@@ -87,52 +87,77 @@ const SHEET_CONFIG = {
 
 // ============================================
 // ESTADOS DE REPARACIÓN
+// Flujo: Recepción -> Presupuesto -> Respuesta -> Pieza (opcional) -> Reparación -> Entrega
 // ============================================
 const ESTADOS_REPARACION = {
-  "En Diagnóstico": {
-    color: "#ffc107",
-    icono: "🔍",
-    descripcion: "Evaluando el equipo"
-  },
+  // Fase 1: Recepción inicial
   "Presupuesto Pendiente": {
     color: "#17a2b8",
     icono: "📝",
-    descripcion: "Elaborando presupuesto"
+    descripcion: "Pendiente de elaborar presupuesto (24h)",
+    fase: 1
   },
+  "Garantía": {
+    color: "#6f42c1",
+    icono: "🛡️",
+    descripcion: "Equipo en garantía",
+    fase: 1
+  },
+
+  // Fase 2: Presupuesto elaborado
   "Presupuesto Enviado": {
     color: "#6c757d",
     icono: "⏳",
-    descripcion: "Esperando respuesta del cliente"
+    descripcion: "Esperando respuesta del cliente",
+    fase: 2
   },
+
+  // Fase 3: Respuesta del cliente
   "Presupuesto Aceptado": {
     color: "#28a745",
     icono: "✅",
-    descripcion: "Cliente aceptó, proceder"
+    descripcion: "Cliente aceptó, proceder con reparación",
+    fase: 3
   },
   "Presupuesto Rechazado": {
     color: "#dc3545",
     icono: "❌",
-    descripcion: "Cliente rechazó, listo para recoger"
+    descripcion: "Cliente rechazó, listo para recoger",
+    fase: 3
   },
-  "Esperando Pieza": {
+
+  // Fase 4: Pedido de pieza (si aplica)
+  "Pieza Pendiente": {
     color: "#fd7e14",
-    icono: "⏸️",
-    descripcion: "Pieza pedida, esperando entrega"
+    icono: "📦",
+    descripcion: "Pieza pedida, esperando llegada",
+    fase: 4
   },
-  "Reparando": {
+  "Pieza Entregada": {
+    color: "#20c997",
+    icono: "✓📦",
+    descripcion: "Pieza recibida, listo para reparar",
+    fase: 4
+  },
+
+  // Fase 5: Reparación
+  "En Reparación": {
     color: "#007bff",
     icono: "🔧",
-    descripcion: "Técnico trabajando en la reparación"
+    descripcion: "Técnico trabajando en la reparación",
+    fase: 5
   },
   "Reparado": {
     color: "#28a745",
     icono: "✅",
-    descripcion: "Reparación completada, listo para recoger"
+    descripcion: "Reparación completada, listo para recoger",
+    fase: 5
   },
   "No tiene Reparación": {
     color: "#6c757d",
     icono: "⚠️",
-    descripcion: "No se pudo reparar"
+    descripcion: "No se pudo reparar, listo para recoger",
+    fase: 5
   }
 };
 
