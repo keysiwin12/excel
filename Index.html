@@ -1474,10 +1474,15 @@
 
         // Renderizar observaciones
         try {
-          if (reparacionActual.observaciones && reparacionActual.observaciones.length > 0) {
+          const obs = reparacionActual.observaciones;
+          if (obs && typeof obs === 'string' && obs.trim() !== '') {
+            // Es un string, mostrarlo directamente
+            document.getElementById('observacionesTexto').innerHTML = `<p>${obs}</p>`;
+          } else if (Array.isArray(obs) && obs.length > 0) {
+            // Es un array
             let obsHtml = '<ul class="list-unstyled">';
-            reparacionActual.observaciones.forEach(obs => {
-              obsHtml += `<li class="mb-2"><i class="fas fa-comment"></i> ${obs}</li>`;
+            obs.forEach(o => {
+              obsHtml += `<li class="mb-2"><i class="fas fa-comment"></i> ${o}</li>`;
             });
             obsHtml += '</ul>';
             document.getElementById('observacionesTexto').innerHTML = obsHtml;
