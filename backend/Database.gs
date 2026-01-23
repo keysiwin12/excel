@@ -216,9 +216,13 @@ function obtenerReparacion(resguardo) {
   try {
     const data = getAllData();
 
+    // Normalizar resguardo a string para comparación
+    const resguardoBuscado = String(resguardo);
+
     // Buscar por resguardo (columna A, índice 0)
     for (let i = 1; i < data.length; i++) {
-      if (data[i][SHEET_CONFIG.columnas.resguardo] === resguardo) {
+      const resguardoFila = String(data[i][SHEET_CONFIG.columnas.resguardo]);
+      if (resguardoFila === resguardoBuscado) {
         return convertirFilaAObjeto(data[i], i + 1);
       }
     }
@@ -616,8 +620,12 @@ function actualizarReparacion(resguardo, datos) {
 function encontrarFilaPorResguardo(resguardo) {
   const data = getAllData();
 
+  // Normalizar resguardo a string para comparación
+  const resguardoBuscado = String(resguardo);
+
   for (let i = 1; i < data.length; i++) {
-    if (data[i][SHEET_CONFIG.columnas.resguardo] === resguardo) {
+    const resguardoFila = String(data[i][SHEET_CONFIG.columnas.resguardo]);
+    if (resguardoFila === resguardoBuscado) {
       return i + 1; // +1 porque getRange empieza en 1
     }
   }

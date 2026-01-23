@@ -1404,8 +1404,11 @@
       try {
         console.log('🔵 Abriendo detalle de:', resguardo);
 
+        // Normalizar resguardo a string para comparación
+        const resguardoBuscado = String(resguardo);
+
         // Buscar la reparación en el array actual
-        const rep = reparacionesActuales.find(r => r.resguardo === resguardo);
+        const rep = reparacionesActuales.find(r => String(r.resguardo) === resguardoBuscado);
 
         if (!rep) {
           console.log('🔵 No encontrado en array, consultando backend...');
