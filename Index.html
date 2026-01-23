@@ -1145,9 +1145,28 @@
         const dias = calcularDias(rep.fechaElaboracionPpto);
         const pieza = rep.pieza && rep.pieza.estadoPedido ? `<span class="badge bg-warning">${rep.pieza.estadoPedido}</span>` : '-';
         const badge = obtenerBadgeEstado(rep.estado);
-        html += `<tr><td><strong>${rep.resguardo}</strong></td><td>${rep.cliente.nombre}<br><small class="text-muted">${rep.cliente.telefono}</small></td><td>${rep.equipo.modelo}</td><td>${badge}</td><td><small>${rep.tecnico || '-'}</small></td><td>${pieza}</td><td>${dias >= 0 ? dias + 'd' : '-'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="abrirModalDetalle('${rep.resguardo}')"><i class="fas fa-eye"></i> Ver</button></td></tr>`;
+        const resguardoSeguro = rep.resguardo || 'SIN-RESGUARDO';
+        html += `<tr>
+          <td><strong>${resguardoSeguro}</strong></td>
+          <td>${rep.cliente?.nombre || 'N/A'}<br><small class="text-muted">${rep.cliente?.telefono || 'N/A'}</small></td>
+          <td>${rep.equipo?.modelo || 'N/A'}</td>
+          <td>${badge}</td>
+          <td><small>${rep.tecnico || '-'}</small></td>
+          <td>${pieza}</td>
+          <td>${dias >= 0 ? dias + 'd' : '-'}</td>
+          <td><button class="btn btn-sm btn-outline-primary btn-ver-detalle" data-resguardo="${resguardoSeguro}"><i class="fas fa-eye"></i> Ver</button></td>
+        </tr>`;
       });
       tbody.innerHTML = html;
+
+      // Agregar event listeners a los botones de "Ver"
+      document.querySelectorAll('.btn-ver-detalle').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const resguardo = this.getAttribute('data-resguardo');
+          console.log('🔵 Clic en Ver, resguardo:', resguardo);
+          abrirModalDetalle(resguardo);
+        });
+      });
     }
 
     function obtenerBadgeEstado(estado) {
