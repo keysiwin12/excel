@@ -661,6 +661,173 @@
     </div>
   </div>
 
+  <!-- Modal: Rechazar Presupuesto (Fase 3) -->
+  <div class="modal fade" id="modalRechazarPresupuesto" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-times-circle"></i> Rechazar Presupuesto
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="rechazarResguardo">
+          <div class="mb-3">
+            <label class="form-label">¿Por qué rechazó el cliente? *</label>
+            <textarea class="form-control" id="motivoRechazo" rows="3" required placeholder="Ej: Muy caro, No vale la pena, Compró otro equipo..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger" onclick="confirmarRechazo()">
+            <i class="fas fa-save"></i> Guardar Rechazo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Registrar Pedido de Pieza (Fase 4) -->
+  <div class="modal fade" id="modalRegistrarPedido" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-box"></i> Registrar Pedido de Pieza
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="pedidoResguardo">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Enlace de Compra *</label>
+              <input type="url" class="form-control" id="pedidoEnlace" required placeholder="https://amazon.es/...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Número de Pedido *</label>
+              <input type="text" class="form-control" id="pedidoNumero" required placeholder="112-8866544-7799">
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Fecha de Pedido *</label>
+              <input type="date" class="form-control" id="pedidoFecha" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha Estimada de Llegada *</label>
+              <input type="date" class="form-control" id="pedidoFechaEstimada" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-info" onclick="guardarPedidoPieza()">
+            <i class="fas fa-save"></i> Guardar Pedido
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Finalizar Reparación (Fase 5) -->
+  <div class="modal fade" id="modalFinalizarReparacion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-check-circle"></i> Finalizar Reparación
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="finalizarResguardo">
+          <div class="mb-3">
+            <label class="form-label">¿Cómo terminó la reparación? *</label>
+            <div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="resultadoReparacion" id="resultadoReparado" value="reparado" checked>
+                <label class="form-check-label" for="resultadoReparado">
+                  ✅ Reparado
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="resultadoReparacion" id="resultadoNoReparado" value="no_reparado">
+                <label class="form-check-label" for="resultadoNoReparado">
+                  ❌ No tiene Reparación
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Técnico Responsable *</label>
+              <select class="form-select" id="finalizarTecnico" required>
+                <option value="">Seleccionar...</option>
+                <option value="Iván">Iván</option>
+                <option value="Romer">Romer</option>
+                <option value="Enque">Enque</option>
+                <option value="Nelson">Nelson</option>
+                <option value="Moviles/disco">Moviles/disco</option>
+                <option value="Repuesto">Repuesto</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha de Reparación *</label>
+              <input type="date" class="form-control" id="finalizarFecha" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Observaciones (opcional)</label>
+            <textarea class="form-control" id="finalizarObservaciones" rows="3" placeholder="Ej: Placa cambiada, funciona perfectamente"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-success" onclick="guardarFinalizarReparacion()">
+            <i class="fas fa-check"></i> Finalizar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Marcar como Entregado (Fase 6) -->
+  <div class="modal fade" id="modalEntregarEquipo" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-box-open"></i> Entregar Equipo
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="entregarResguardo">
+          <div class="mb-3">
+            <label class="form-label">Número de Factura (opcional)</label>
+            <input type="text" class="form-control" id="entregarFactura" placeholder="001234">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha de Recogida *</label>
+            <input type="date" class="form-control" id="entregarFecha" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Observaciones (opcional)</label>
+            <textarea class="form-control" id="entregarObservaciones" rows="3" placeholder="Ej: Cliente satisfecho, pagó en efectivo"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarEntregarEquipo()">
+            <i class="fas fa-check"></i> Marcar como Entregado
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap Bundle -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -761,8 +928,36 @@
         return await this.call('apiObtenerAlertas');
       },
 
-      marcarComoEntregado: async function(resguardo, numeroFactura) {
-        return await this.call('apiMarcarComoEntregado', resguardo, numeroFactura);
+      // Fase 3: Respuesta del cliente
+      aceptarPresupuesto: async function(resguardo) {
+        return await this.call('apiAceptarPresupuesto', resguardo);
+      },
+
+      rechazarPresupuesto: async function(resguardo, motivo) {
+        return await this.call('apiRechazarPresupuesto', resguardo, motivo);
+      },
+
+      // Fase 4: Gestión de pieza
+      registrarPedidoPieza: async function(resguardo, datos) {
+        return await this.call('apiRegistrarPedidoPieza', resguardo, datos);
+      },
+
+      actualizarEstadoPedido: async function(resguardo, nuevoEstado, fechaRecepcion) {
+        return await this.call('apiActualizarEstadoPedido', resguardo, nuevoEstado, fechaRecepcion);
+      },
+
+      // Fase 5: Reparación
+      iniciarReparacion: async function(resguardo) {
+        return await this.call('apiIniciarReparacion', resguardo);
+      },
+
+      finalizarReparacion: async function(resguardo, datos) {
+        return await this.call('apiFinalizarReparacion', resguardo, datos);
+      },
+
+      // Fase 6: Entrega
+      marcarComoEntregado: async function(resguardo, datos) {
+        return await this.call('apiMarcarComoEntregado', resguardo, datos);
       },
 
       obtenerSiguienteResguardo: async function() {
@@ -1347,8 +1542,21 @@
       const estado = rep.estado;
       let html = '';
 
-      // Fase 2: Presupuesto Pendiente -> Completar Datos del Presupuesto
-      if (estado === 'Presupuesto Pendiente') {
+      // FASE 1: Garantía (caso especial)
+      if (estado === 'Garantía') {
+        html = `
+          <div class="card border-secondary">
+            <div class="card-body">
+              <h5 class="card-title text-secondary">
+                <i class="fas fa-shield-alt"></i> Equipo en Garantía
+              </h5>
+              <p class="card-text">Este equipo está cubierto por garantía. Seguir proceso especial de garantía.</p>
+            </div>
+          </div>
+        `;
+      }
+      // FASE 2: Presupuesto Pendiente -> Completar Datos del Presupuesto
+      else if (estado === 'Presupuesto Pendiente') {
         html = `
           <div class="card border-primary">
             <div class="card-body bg-primary bg-opacity-10">
@@ -1365,7 +1573,7 @@
           </div>
         `;
       }
-      // Fase 3: Presupuesto Enviado -> Esperando respuesta
+      // FASE 3: Presupuesto Enviado -> Esperando respuesta
       else if (estado === 'Presupuesto Enviado') {
         html = `
           <div class="card border-info">
@@ -1375,24 +1583,142 @@
               </h5>
               <p class="card-text">El presupuesto ha sido enviado. Esperando aceptación o rechazo del cliente.</p>
               <hr>
-              <button class="btn btn-success me-2" onclick="alert('Funcionalidad en desarrollo')">
+              <button class="btn btn-success me-2" onclick="aceptarPresupuesto()">
                 <i class="fas fa-check"></i> Cliente Aceptó
               </button>
-              <button class="btn btn-danger" onclick="alert('Funcionalidad en desarrollo')">
+              <button class="btn btn-danger" onclick="abrirModalRechazarPresupuesto()">
                 <i class="fas fa-times"></i> Cliente Rechazó
               </button>
             </div>
           </div>
         `;
       }
-      // Otras fases (próximamente)
+      // FASE 4: Pieza Pendiente -> Registrar Pedido
+      else if (estado === 'Pieza Pendiente') {
+        const estadoPedido = rep.pieza?.estadoPedido || '';
+        if (!estadoPedido || estadoPedido === 'Pendiente') {
+          html = `
+            <div class="card border-warning">
+              <div class="card-body bg-warning bg-opacity-10">
+                <h5 class="card-title text-warning">
+                  <i class="fas fa-box"></i> Acción Requerida: Registrar Pedido de Pieza
+                </h5>
+                <p class="card-text">La reparación requiere una pieza. Registre el pedido realizado al proveedor.</p>
+                <hr>
+                <button class="btn btn-warning" onclick="abrirModalRegistrarPedido()">
+                  <i class="fas fa-plus"></i> Registrar Pedido
+                </button>
+              </div>
+            </div>
+          `;
+        } else if (estadoPedido === 'Pedido') {
+          html = `
+            <div class="card border-info">
+              <div class="card-body bg-info bg-opacity-10">
+                <h5 class="card-title text-info">
+                  <i class="fas fa-shipping-fast"></i> Pedido Realizado
+                </h5>
+                <p class="card-text">La pieza ha sido pedida. Esperando envío del proveedor.</p>
+                <hr>
+                <button class="btn btn-info" onclick="marcarPiezaEnTransito()">
+                  <i class="fas fa-truck"></i> Marcar En Tránsito
+                </button>
+              </div>
+            </div>
+          `;
+        } else if (estadoPedido === 'En Tránsito') {
+          html = `
+            <div class="card border-primary">
+              <div class="card-body bg-primary bg-opacity-10">
+                <h5 class="card-title text-primary">
+                  <i class="fas fa-truck"></i> Pieza En Tránsito
+                </h5>
+                <p class="card-text">La pieza ha sido enviada. Esperando recepción.</p>
+                <hr>
+                <button class="btn btn-primary" onclick="marcarPiezaRecibida()">
+                  <i class="fas fa-check-circle"></i> Marcar como Recibida
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      }
+      // FASE 4: Pieza Entregada -> Iniciar Reparación
+      else if (estado === 'Pieza Entregada') {
+        html = `
+          <div class="card border-success">
+            <div class="card-body bg-success bg-opacity-10">
+              <h5 class="card-title text-success">
+                <i class="fas fa-check-circle"></i> Pieza Recibida - Listo para Reparar
+              </h5>
+              <p class="card-text">La pieza ha sido recibida. Puede iniciar la reparación del equipo.</p>
+              <hr>
+              <button class="btn btn-success" onclick="iniciarReparacion()">
+                <i class="fas fa-tools"></i> Iniciar Reparación
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      // FASE 5: En Reparación -> Finalizar
+      else if (estado === 'En Reparación') {
+        html = `
+          <div class="card border-primary">
+            <div class="card-body bg-primary bg-opacity-10">
+              <h5 class="card-title text-primary">
+                <i class="fas fa-wrench"></i> Reparación en Proceso
+              </h5>
+              <p class="card-text">El técnico está trabajando en la reparación del equipo.</p>
+              <hr>
+              <button class="btn btn-primary" onclick="abrirModalFinalizarReparacion()">
+                <i class="fas fa-flag-checkered"></i> Finalizar Reparación
+              </button>
+            </div>
+          </div>
+        `;
+      }
+      // FASE 6: Reparado / No tiene Reparación / Presupuesto Rechazado -> Entregar
+      else if (estado === 'Reparado' || estado === 'No tiene Reparación' || estado === 'Presupuesto Rechazado') {
+        const estadoRecogida = rep.estadoRecogida || 'PENDIENTE';
+        if (estadoRecogida === 'PENDIENTE') {
+          const mensaje = estado === 'Reparado' ? 'reparado y listo para entregar' :
+                         estado === 'No tiene Reparación' ? 'no se pudo reparar, listo para entregar' :
+                         'presupuesto rechazado, listo para entregar';
+          html = `
+            <div class="card border-success">
+              <div class="card-body bg-success bg-opacity-10">
+                <h5 class="card-title text-success">
+                  <i class="fas fa-box-open"></i> Equipo Listo para Entregar
+                </h5>
+                <p class="card-text">El equipo está ${mensaje}. Esperando que el cliente recoja.</p>
+                <hr>
+                <button class="btn btn-success" onclick="abrirModalEntregarEquipo()">
+                  <i class="fas fa-hand-holding"></i> Marcar como Entregado
+                </button>
+              </div>
+            </div>
+          `;
+        } else if (estadoRecogida === 'ENTREGADO') {
+          html = `
+            <div class="card border-success">
+              <div class="card-body">
+                <h5 class="card-title text-success">
+                  <i class="fas fa-check-double"></i> Caso Cerrado
+                </h5>
+                <p class="card-text">El equipo fue entregado al cliente. Este caso ha finalizado.</p>
+              </div>
+            </div>
+          `;
+        }
+      }
+      // Estado desconocido
       else {
         html = `
           <div class="card border-secondary">
             <div class="card-body">
               <p class="text-muted mb-0">
                 <i class="fas fa-info-circle"></i>
-                Estado actual: <strong>${estado}</strong>. Acciones disponibles próximamente.
+                Estado actual: <strong>${estado}</strong>
               </p>
             </div>
           </div>
@@ -1546,6 +1872,353 @@
       } catch (error) {
         console.error('❌ Error:', error);
         mostrarError('Error al guardar el presupuesto: ' + error.message);
+      }
+    }
+
+    // ========================================
+    // FASE 3: RESPUESTA DEL CLIENTE
+    // ========================================
+
+    async function aceptarPresupuesto() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      if (!confirm('¿Confirma que el cliente aceptó el presupuesto?')) {
+        return;
+      }
+
+      try {
+        const resultado = await API.aceptarPresupuesto(reparacionActual.resguardo);
+
+        if (resultado && resultado.exito) {
+          mostrarExito(`Presupuesto aceptado. Estado: ${resultado.nuevoEstado}`);
+          modalDetalle.hide();
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al aceptar presupuesto');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al aceptar presupuesto: ' + error.message);
+      }
+    }
+
+    let modalRechazarPresupuesto;
+
+    function abrirModalRechazarPresupuesto() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      document.getElementById('rechazarResguardo').value = reparacionActual.resguardo;
+      document.getElementById('motivoRechazo').value = '';
+
+      if (!modalRechazarPresupuesto) {
+        modalRechazarPresupuesto = new bootstrap.Modal(document.getElementById('modalRechazarPresupuesto'));
+      }
+      modalRechazarPresupuesto.show();
+    }
+
+    async function confirmarRechazo() {
+      const motivo = document.getElementById('motivoRechazo').value.trim();
+
+      if (!motivo) {
+        mostrarError('Debe ingresar el motivo del rechazo');
+        return;
+      }
+
+      try {
+        const resguardo = document.getElementById('rechazarResguardo').value;
+        const resultado = await API.rechazarPresupuesto(resguardo, motivo);
+
+        if (resultado && resultado.exito) {
+          modalRechazarPresupuesto.hide();
+          modalDetalle.hide();
+          mostrarExito('Presupuesto rechazado. Cliente debe recoger equipo.');
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al rechazar presupuesto');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al rechazar presupuesto: ' + error.message);
+      }
+    }
+
+    // ========================================
+    // FASE 4: GESTIÓN DE PIEZA
+    // ========================================
+
+    let modalRegistrarPedido;
+
+    function abrirModalRegistrarPedido() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      document.getElementById('pedidoResguardo').value = reparacionActual.resguardo;
+      document.getElementById('pedidoFecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('pedidoEnlace').value = '';
+      document.getElementById('pedidoNumero').value = '';
+      document.getElementById('pedidoFechaEstimada').value = '';
+
+      if (!modalRegistrarPedido) {
+        modalRegistrarPedido = new bootstrap.Modal(document.getElementById('modalRegistrarPedido'));
+      }
+      modalRegistrarPedido.show();
+    }
+
+    async function guardarPedidoPieza() {
+      const datos = {
+        enlace: document.getElementById('pedidoEnlace').value.trim(),
+        numeroPedido: document.getElementById('pedidoNumero').value.trim(),
+        fechaPedido: document.getElementById('pedidoFecha').value,
+        fechaEstimada: document.getElementById('pedidoFechaEstimada').value
+      };
+
+      if (!datos.enlace || !datos.numeroPedido || !datos.fechaPedido || !datos.fechaEstimada) {
+        mostrarError('Todos los campos son obligatorios');
+        return;
+      }
+
+      try {
+        const resguardo = document.getElementById('pedidoResguardo').value;
+        const resultado = await API.registrarPedidoPieza(resguardo, datos);
+
+        if (resultado && resultado.exito) {
+          modalRegistrarPedido.hide();
+          modalDetalle.hide();
+          mostrarExito('Pedido registrado exitosamente');
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al registrar pedido');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al registrar pedido: ' + error.message);
+      }
+    }
+
+    async function marcarPiezaEnTransito() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      if (!confirm('¿Marcar pieza como En Tránsito?')) {
+        return;
+      }
+
+      try {
+        const resultado = await API.actualizarEstadoPedido(reparacionActual.resguardo, 'En Tránsito');
+
+        if (resultado && resultado.exito) {
+          mostrarExito('Estado actualizado: En Tránsito');
+          modalDetalle.hide();
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al actualizar estado');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al actualizar estado: ' + error.message);
+      }
+    }
+
+    async function marcarPiezaRecibida() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      if (!confirm('¿Confirma que la pieza fue recibida?')) {
+        return;
+      }
+
+      try {
+        const hoy = new Date().toISOString().split('T')[0];
+        const resultado = await API.actualizarEstadoPedido(reparacionActual.resguardo, 'Recibido', hoy);
+
+        if (resultado && resultado.exito) {
+          mostrarExito('Pieza recibida. Estado: Pieza Entregada');
+          modalDetalle.hide();
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al marcar como recibida');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al marcar como recibida: ' + error.message);
+      }
+    }
+
+    // ========================================
+    // FASE 5: REPARACIÓN
+    // ========================================
+
+    async function iniciarReparacion() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      if (!confirm('¿Iniciar reparación del equipo?')) {
+        return;
+      }
+
+      try {
+        const resultado = await API.iniciarReparacion(reparacionActual.resguardo);
+
+        if (resultado && resultado.exito) {
+          mostrarExito('Reparación iniciada');
+          modalDetalle.hide();
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al iniciar reparación');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al iniciar reparación: ' + error.message);
+      }
+    }
+
+    let modalFinalizarReparacion;
+
+    function abrirModalFinalizarReparacion() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      document.getElementById('finalizarResguardo').value = reparacionActual.resguardo;
+      document.getElementById('finalizarFecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('finalizarTecnico').value = '';
+      document.getElementById('finalizarObservaciones').value = '';
+      document.getElementById('resultadoReparado').checked = true;
+
+      if (!modalFinalizarReparacion) {
+        modalFinalizarReparacion = new bootstrap.Modal(document.getElementById('modalFinalizarReparacion'));
+      }
+      modalFinalizarReparacion.show();
+    }
+
+    async function guardarFinalizarReparacion() {
+      const datos = {
+        resultado: document.querySelector('input[name="resultadoReparacion"]:checked').value,
+        tecnico: document.getElementById('finalizarTecnico').value,
+        fecha: document.getElementById('finalizarFecha').value,
+        observaciones: document.getElementById('finalizarObservaciones').value.trim()
+      };
+
+      if (!datos.tecnico || !datos.fecha) {
+        mostrarError('Técnico y fecha son obligatorios');
+        return;
+      }
+
+      try {
+        const resguardo = document.getElementById('finalizarResguardo').value;
+        const resultado = await API.finalizarReparacion(resguardo, datos);
+
+        if (resultado && resultado.exito) {
+          modalFinalizarReparacion.hide();
+          modalDetalle.hide();
+          mostrarExito(`Reparación finalizada: ${resultado.nuevoEstado}`);
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al finalizar reparación');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al finalizar reparación: ' + error.message);
+      }
+    }
+
+    // ========================================
+    // FASE 6: ENTREGA
+    // ========================================
+
+    let modalEntregarEquipo;
+
+    function abrirModalEntregarEquipo() {
+      if (!reparacionActual) {
+        mostrarError('No hay reparación seleccionada');
+        return;
+      }
+
+      document.getElementById('entregarResguardo').value = reparacionActual.resguardo;
+      document.getElementById('entregarFecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('entregarFactura').value = '';
+      document.getElementById('entregarObservaciones').value = '';
+
+      if (!modalEntregarEquipo) {
+        modalEntregarEquipo = new bootstrap.Modal(document.getElementById('modalEntregarEquipo'));
+      }
+      modalEntregarEquipo.show();
+    }
+
+    async function guardarEntregarEquipo() {
+      const datos = {
+        numeroFactura: document.getElementById('entregarFactura').value.trim(),
+        fechaRecogida: document.getElementById('entregarFecha').value,
+        observaciones: document.getElementById('entregarObservaciones').value.trim()
+      };
+
+      if (!datos.fechaRecogida) {
+        mostrarError('La fecha de recogida es obligatoria');
+        return;
+      }
+
+      try {
+        const resguardo = document.getElementById('entregarResguardo').value;
+        const resultado = await API.marcarComoEntregado(resguardo, datos);
+
+        if (resultado && resultado.exito) {
+          modalEntregarEquipo.hide();
+          modalDetalle.hide();
+          mostrarExito(`Equipo entregado exitosamente (${resultado.diasTotales} días)`);
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          mostrarError(resultado?.error || 'Error al marcar como entregado');
+        }
+
+      } catch (error) {
+        console.error('❌ Error:', error);
+        mostrarError('Error al marcar como entregado: ' + error.message);
       }
     }
 

@@ -519,3 +519,296 @@ function obtenerReparacionesConAlertas() {
     throw error;
   }
 }
+
+// ============================================
+// FASE 3: RESPUESTA DEL CLIENTE
+// ============================================
+
+/**
+ * Registra que el cliente aceptó el presupuesto
+ * @param {string} resguardo - Número de resguardo
+ * @returns {Object} Resultado
+ */
+function aceptarPresupuesto(resguardo) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    const ahora = new Date();
+
+    // Registrar fecha de aceptación
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaAceptacionPpto + 1).setValue(ahora);
+
+    // Determinar siguiente estado
+    const necesitaPieza = sheet.getRange(numFila, SHEET_CONFIG.columnas.proveedor + 1).getValue();
+    const nuevoEstado = necesitaPieza ? "Pieza Pendiente" : "En Reparación";
+
+    // Cambiar estado
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estado + 1).setValue(nuevoEstado);
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`✅ Presupuesto aceptado: ${resguardo} → ${nuevoEstado}`);
+
+    return {
+      exito: true,
+      mensaje: `Presupuesto aceptado. Estado: ${nuevoEstado}`,
+      nuevoEstado: nuevoEstado
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al aceptar presupuesto: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Registra que el cliente rechazó el presupuesto
+ * @param {string} resguardo - Número de resguardo
+ * @param {string} motivo - Motivo del rechazo
+ * @returns {Object} Resultado
+ */
+function rechazarPresupuesto(resguardo, motivo) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    // Registrar motivo de rechazo
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.motivoRechazo + 1).setValue(motivo || "No especificado");
+
+    // Cambiar estado
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estado + 1).setValue("Presupuesto Rechazado");
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`❌ Presupuesto rechazado: ${resguardo} - ${motivo}`);
+
+    return {
+      exito: true,
+      mensaje: "Presupuesto rechazado",
+      nuevoEstado: "Presupuesto Rechazado"
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al rechazar presupuesto: ${error.message}`);
+    throw error;
+  }
+}
+
+// ============================================
+// FASE 4: GESTIÓN DE PIEZA
+// ============================================
+
+/**
+ * Registra un pedido de pieza
+ * @param {string} resguardo - Número de resguardo
+ * @param {Object} datos - Datos del pedido {enlace, numeroPedido, fechaPedido, fechaEstimada}
+ * @returns {Object} Resultado
+ */
+function registrarPedidoPieza(resguardo, datos) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    // Guardar datos del pedido
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.enlaceCompra + 1).setValue(datos.enlace || "");
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.numeroPedido + 1).setValue(datos.numeroPedido || "");
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaPedido + 1).setValue(new Date(datos.fechaPedido));
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaEntrega + 1).setValue(new Date(datos.fechaEstimada));
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estadoPedido + 1).setValue("Pedido");
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`✅ Pedido registrado: ${resguardo} - ${datos.numeroPedido}`);
+
+    return {
+      exito: true,
+      mensaje: "Pedido registrado exitosamente"
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al registrar pedido: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza el estado de un pedido de pieza
+ * @param {string} resguardo - Número de resguardo
+ * @param {string} nuevoEstado - Nuevo estado (En Tránsito, Recibido, etc)
+ * @param {Date} fechaRecepcion - Fecha de recepción (solo para Recibido)
+ * @returns {Object} Resultado
+ */
+function actualizarEstadoPedido(resguardo, nuevoEstado, fechaRecepcion) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    // Actualizar estado del pedido
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estadoPedido + 1).setValue(nuevoEstado);
+
+    // Si es "Recibido", actualizar fecha real y cambiar estado de reparación
+    if (nuevoEstado === "Recibido") {
+      sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaEntrega + 1).setValue(fechaRecepcion || new Date());
+      sheet.getRange(numFila, SHEET_CONFIG.columnas.estado + 1).setValue("Pieza Entregada");
+    }
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`✅ Estado pedido actualizado: ${resguardo} → ${nuevoEstado}`);
+
+    return {
+      exito: true,
+      mensaje: `Estado del pedido actualizado a: ${nuevoEstado}`
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al actualizar estado pedido: ${error.message}`);
+    throw error;
+  }
+}
+
+// ============================================
+// FASE 5: REPARACIÓN
+// ============================================
+
+/**
+ * Inicia la reparación de un equipo
+ * @param {string} resguardo - Número de resguardo
+ * @returns {Object} Resultado
+ */
+function iniciarReparacion(resguardo) {
+  try {
+    return cambiarEstadoReparacion(resguardo, "En Reparación", {
+      observacion: "Reparación iniciada"
+    });
+
+  } catch (error) {
+    Logger.log(`❌ Error al iniciar reparación: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Finaliza la reparación de un equipo
+ * @param {string} resguardo - Número de resguardo
+ * @param {Object} datos - Datos {resultado, tecnico, fecha, observaciones}
+ * @returns {Object} Resultado
+ */
+function finalizarReparacion(resguardo, datos) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    // Guardar técnico y fecha
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.tecnico + 1).setValue(datos.tecnico);
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaReparacion + 1).setValue(new Date(datos.fecha));
+
+    // Guardar observaciones si hay
+    if (datos.observaciones) {
+      agregarObservacion(resguardo, datos.observaciones);
+    }
+
+    // Cambiar estado según resultado
+    const nuevoEstado = datos.resultado === "reparado" ? "Reparado" : "No tiene Reparación";
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estado + 1).setValue(nuevoEstado);
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`✅ Reparación finalizada: ${resguardo} → ${nuevoEstado}`);
+
+    return {
+      exito: true,
+      mensaje: `Reparación finalizada: ${nuevoEstado}`,
+      nuevoEstado: nuevoEstado
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al finalizar reparación: ${error.message}`);
+    throw error;
+  }
+}
+
+// ============================================
+// FASE 6: ENTREGA
+// ============================================
+
+/**
+ * Marca un equipo como entregado al cliente
+ * @param {string} resguardo - Número de resguardo
+ * @param {Object} datos - Datos {numeroFactura, fechaRecogida, observaciones}
+ * @returns {Object} Resultado
+ */
+function marcarComoEntregado(resguardo, datos) {
+  try {
+    const sheet = getSheet();
+    const numFila = encontrarFilaPorResguardo(resguardo);
+
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    const fechaRecogida = new Date(datos.fechaRecogida || new Date());
+
+    // Guardar número de factura
+    if (datos.numeroFactura) {
+      sheet.getRange(numFila, SHEET_CONFIG.columnas.numeroFactura + 1).setValue(datos.numeroFactura);
+    }
+
+    // Guardar fecha de recogida
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.fechaRecogida + 1).setValue(fechaRecogida);
+
+    // Cambiar estado de recogida
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.estadoRecogida + 1).setValue("ENTREGADO");
+
+    // Calcular tiempo total (días desde recepción hasta entrega)
+    const fechaRecepcion = sheet.getRange(numFila, SHEET_CONFIG.columnas.fecha + 1).getValue();
+    const diasTotales = calcularDiasTranscurridos(fechaRecepcion, fechaRecogida);
+    sheet.getRange(numFila, SHEET_CONFIG.columnas.tiempoEntregaDias + 1).setValue(diasTotales);
+
+    // Guardar observaciones si hay
+    if (datos.observaciones) {
+      sheet.getRange(numFila, SHEET_CONFIG.columnas.obsEntregaEquipos + 1).setValue(datos.observaciones);
+    }
+
+    // Invalidar caché
+    invalidarCaches();
+
+    Logger.log(`✅ Equipo entregado: ${resguardo} - ${diasTotales} días`);
+
+    return {
+      exito: true,
+      mensaje: `Equipo entregado exitosamente (${diasTotales} días)`,
+      diasTotales: diasTotales
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error al marcar como entregado: ${error.message}`);
+    throw error;
+  }
+}

@@ -569,20 +569,120 @@ function apiObtenerAlertas() {
 }
 
 // ============================================
-// API - RECOGIDA
+// API - GESTIÓN DE PIEZA
+// ============================================
+
+/**
+ * API: Registra un pedido de pieza
+ * @param {string} resguardo - Número de resguardo
+ * @param {Object} datos - Datos del pedido
+ * @returns {Object} Resultado
+ */
+function apiRegistrarPedidoPieza(resguardo, datos) {
+  try {
+    verificarPermisos();
+
+    const resultado = registrarPedidoPieza(resguardo, datos);
+
+    return resultado;
+
+  } catch (error) {
+    Logger.log(`❌ Error en apiRegistrarPedidoPieza: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * API: Actualiza el estado de un pedido
+ * @param {string} resguardo - Número de resguardo
+ * @param {string} nuevoEstado - Nuevo estado
+ * @param {Date} fechaRecepcion - Fecha de recepción (opcional)
+ * @returns {Object} Resultado
+ */
+function apiActualizarEstadoPedido(resguardo, nuevoEstado, fechaRecepcion) {
+  try {
+    verificarPermisos();
+
+    const resultado = actualizarEstadoPedido(resguardo, nuevoEstado, fechaRecepcion);
+
+    return resultado;
+
+  } catch (error) {
+    Logger.log(`❌ Error en apiActualizarEstadoPedido: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
+  }
+}
+
+// ============================================
+// API - REPARACIÓN
+// ============================================
+
+/**
+ * API: Inicia una reparación
+ * @param {string} resguardo - Número de resguardo
+ * @returns {Object} Resultado
+ */
+function apiIniciarReparacion(resguardo) {
+  try {
+    verificarPermisos();
+
+    const resultado = iniciarReparacion(resguardo);
+
+    return resultado;
+
+  } catch (error) {
+    Logger.log(`❌ Error en apiIniciarReparacion: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * API: Finaliza una reparación
+ * @param {string} resguardo - Número de resguardo
+ * @param {Object} datos - Datos de finalización
+ * @returns {Object} Resultado
+ */
+function apiFinalizarReparacion(resguardo, datos) {
+  try {
+    verificarPermisos();
+
+    const resultado = finalizarReparacion(resguardo, datos);
+
+    return resultado;
+
+  } catch (error) {
+    Logger.log(`❌ Error en apiFinalizarReparacion: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
+  }
+}
+
+// ============================================
+// API - ENTREGA
 // ============================================
 
 /**
  * API: Marca como entregado
  * @param {string} resguardo - Número de resguardo
- * @param {string} numeroFactura - Número de factura
+ * @param {Object} datos - Datos de entrega {numeroFactura, fechaRecogida, observaciones}
  * @returns {Object} Resultado
  */
-function apiMarcarComoEntregado(resguardo, numeroFactura) {
+function apiMarcarComoEntregado(resguardo, datos) {
   try {
     verificarPermisos();
 
-    const resultado = marcarComoEntregado(resguardo, numeroFactura);
+    const resultado = marcarComoEntregado(resguardo, datos);
 
     return resultado;
 
