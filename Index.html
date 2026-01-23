@@ -372,14 +372,14 @@
             </h6>
             <div class="row mb-3">
               <div class="col-md-6">
-                <label class="form-label">Nº Resguardo (Factusol) *</label>
+                <label class="form-label">Nº Resguardo *</label>
                 <div class="input-group">
                   <input type="text" class="form-control bg-light" id="resguardo" placeholder="Cargando..." readonly>
                   <button class="btn btn-outline-secondary" type="button" onclick="cargarSiguienteResguardo()" title="Recargar número">
                     <i class="fas fa-sync-alt"></i>
                   </button>
                 </div>
-                <small class="text-muted">Se genera automáticamente</small>
+                <small class="text-muted">Número correlativo auto-generado</small>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Fecha de Recepción *</label>
@@ -549,20 +549,20 @@
     </div>
   </div>
 
-  <!-- Modal: Elaborar Presupuesto (Fase 2) -->
+  <!-- Modal: Completar Datos del Presupuesto (Fase 2) -->
   <div class="modal fade" id="modalElaborarPresupuesto" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title">
-            <i class="fas fa-file-invoice-dollar"></i> Elaborar Presupuesto
+            <i class="fas fa-file-invoice-dollar"></i> Completar Datos del Presupuesto
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="alert alert-info mb-4">
             <i class="fas fa-info-circle"></i>
-            <strong>Fase 2:</strong> Completar datos del presupuesto elaborado por el técnico
+            <strong>Fase 2:</strong> Completar datos del presupuesto ya elaborado por el técnico (en otro software)
           </div>
           <form id="formElaborarPresupuesto">
             <!-- Responsable y Fecha -->
@@ -654,7 +654,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-primary" onclick="guardarPresupuesto()">
-            <i class="fas fa-paper-plane"></i> Enviar Presupuesto
+            <i class="fas fa-save"></i> Guardar Datos
           </button>
         </div>
       </div>
@@ -1347,19 +1347,19 @@
       const estado = rep.estado;
       let html = '';
 
-      // Fase 2: Presupuesto Pendiente -> Elaborar Presupuesto
+      // Fase 2: Presupuesto Pendiente -> Completar Datos del Presupuesto
       if (estado === 'Presupuesto Pendiente') {
         html = `
           <div class="card border-primary">
             <div class="card-body bg-primary bg-opacity-10">
               <h5 class="card-title text-primary">
-                <i class="fas fa-file-invoice-dollar"></i> Acción Requerida: Elaborar Presupuesto
+                <i class="fas fa-file-invoice-dollar"></i> Acción Requerida: Completar Datos del Presupuesto
               </h5>
-              <p class="card-text">El equipo ha sido recibido. El siguiente paso es elaborar el presupuesto de reparación.</p>
+              <p class="card-text">El equipo ha sido recibido. Complete los datos del presupuesto ya elaborado por el técnico.</p>
               <p class="mb-0"><i class="fas fa-clock"></i> <strong>Límite:</strong> 24 horas desde la recepción</p>
               <hr>
               <button class="btn btn-primary" onclick="abrirModalElaborarPresupuesto()">
-                <i class="fas fa-edit"></i> Elaborar Presupuesto
+                <i class="fas fa-edit"></i> Completar Datos del Presupuesto
               </button>
             </div>
           </div>

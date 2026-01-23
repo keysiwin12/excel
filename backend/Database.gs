@@ -60,43 +60,36 @@ function getAllData() {
 
 /**
  * Genera el siguiente número de resguardo correlativo
- * @returns {string} Siguiente número de resguardo (ej: "RES-2025-001")
+ * @returns {number} Siguiente número de resguardo (ej: 1015, 1016...)
  */
 function generarSiguienteResguardo() {
   try {
     const sheet = getSheet();
     const data = getAllData();
 
-    // Obtener el año actual
-    const año = new Date().getFullYear();
-
-    // Si no hay datos (solo header), comenzar desde 001
+    // Si no hay datos (solo header), comenzar desde 1
     if (data.length <= 1) {
-      return `RES-${año}-001`;
+      return 1;
     }
 
-    // Buscar el último resguardo del año actual
+    // Buscar el número más alto en la columna de resguardo
     let maxNumero = 0;
-    const patron = new RegExp(`^RES-${año}-(\\d+)$`);
 
     for (let i = 1; i < data.length; i++) {
       const resguardo = data[i][SHEET_CONFIG.columnas.resguardo];
       if (!resguardo) continue;
 
-      const match = resguardo.toString().match(patron);
-      if (match) {
-        const numero = parseInt(match[1], 10);
-        if (numero > maxNumero) {
-          maxNumero = numero;
-        }
+      // Convertir a número
+      const numero = parseInt(resguardo, 10);
+
+      // Si es un número válido y mayor al máximo actual
+      if (!isNaN(numero) && numero > maxNumero) {
+        maxNumero = numero;
       }
     }
 
-    // Generar el siguiente número
-    const siguienteNumero = maxNumero + 1;
-    const numeroFormateado = siguienteNumero.toString().padStart(3, '0');
-
-    return `RES-${año}-${numeroFormateado}`;
+    // Retornar el siguiente número
+    return maxNumero + 1;
 
   } catch (error) {
     Logger.log(`❌ Error al generar resguardo: ${error.message}`);
