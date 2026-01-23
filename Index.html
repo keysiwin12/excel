@@ -1389,61 +1389,119 @@
         const rep = reparacionesActuales.find(r => r.resguardo === resguardo);
 
         if (!rep) {
+          console.log('🔵 No encontrado en array, consultando backend...');
           // Si no está en la lista actual, obtenerla del backend
           const resultado = await API.obtenerReparacion(resguardo);
-          if (resultado.exito) {
+          console.log('🔵 Resultado backend:', resultado);
+
+          if (resultado && resultado.exito) {
             reparacionActual = resultado.reparacion;
           } else {
-            mostrarError('No se pudo cargar la reparación');
+            console.error('❌ Backend retornó error:', resultado);
+            mostrarError('No se pudo cargar la reparación: ' + (resultado?.error || 'Error desconocido'));
             return;
           }
         } else {
+          console.log('🔵 Encontrado en array:', rep);
           reparacionActual = rep;
         }
 
-        // Llenar datos básicos
-        document.getElementById('detalleResguardo').textContent = reparacionActual.resguardo;
-        document.getElementById('detalleCliente').textContent = reparacionActual.cliente.nombre;
-        document.getElementById('detalleTelefono').textContent = reparacionActual.cliente.telefono;
-        document.getElementById('detalleEmail').textContent = reparacionActual.cliente.email || 'No especificado';
-        document.getElementById('detalleEquipo').textContent = reparacionActual.equipo.modelo;
-        document.getElementById('detalleSintoma').textContent = reparacionActual.equipo.sintoma || 'No especificado';
-        document.getElementById('detalleFechaRecepcion').textContent = reparacionActual.fecha ? formatearFecha(reparacionActual.fecha) : '-';
+        // Validar que tenemos los datos mínimos
+        if (!reparacionActual) {
+          console.error('❌ reparacionActual es null o undefined');
+          mostrarError('No se pudo cargar la reparación');
+          return;
+        }
+
+        console.log('🔵 Datos de reparación:', reparacionActual);
+
+        // Validar estructura de datos
+        if (!reparacionActual.cliente) {
+          console.error('❌ reparacionActual.cliente no existe');
+          reparacionActual.cliente = { nombre: '', telefono: '', email: '' };
+        }
+        if (!reparacionActual.equipo) {
+          console.error('❌ reparacionActual.equipo no existe');
+          reparacionActual.equipo = { modelo: '', sintoma: '' };
+        }
+
+        // Llenar datos básicos con validaciones
+        try {
+          document.getElementById('detalleResguardo').textContent = reparacionActual.resguardo || 'N/A';
+          document.getElementById('detalleCliente').textContent = reparacionActual.cliente?.nombre || 'No especificado';
+          document.getElementById('detalleTelefono').textContent = reparacionActual.cliente?.telefono || 'No especificado';
+          document.getElementById('detalleEmail').textContent = reparacionActual.cliente?.email || 'No especificado';
+          document.getElementById('detalleEquipo').textContent = reparacionActual.equipo?.modelo || 'No especificado';
+          document.getElementById('detalleSintoma').textContent = reparacionActual.equipo?.sintoma || 'No especificado';
+          document.getElementById('detalleFechaRecepcion').textContent = reparacionActual.fecha ? formatearFecha(reparacionActual.fecha) : '-';
+        } catch (e) {
+          console.error('❌ Error llenando datos básicos:', e);
+          throw new Error('Error llenando datos básicos: ' + e.message);
+        }
 
         // Badge de estado
-        const badge = obtenerBadgeEstado(reparacionActual.estado);
-        document.getElementById('detalleEstadoBadge').outerHTML = badge;
+        try {
+          const badge = obtenerBadgeEstado(reparacionActual.estado);
+          document.getElementById('detalleEstadoBadge').outerHTML = badge;
+        } catch (e) {
+          console.error('❌ Error con badge:', e);
+          throw new Error('Error con badge de estado: ' + e.message);
+        }
 
         // Renderizar timeline
-        renderizarTimeline(reparacionActual);
+        try {
+          renderizarTimeline(reparacionActual);
+        } catch (e) {
+          console.error('❌ Error renderizando timeline:', e);
+          throw new Error('Error renderizando timeline: ' + e.message);
+        }
 
         // Renderizar acción contextual
-        renderizarAccion(reparacionActual);
+        try {
+          renderizarAccion(reparacionActual);
+        } catch (e) {
+          console.error('❌ Error renderizando acción:', e);
+          throw new Error('Error renderizando acción: ' + e.message);
+        }
 
         // Renderizar información detallada
-        renderizarInfoDetallada(reparacionActual);
+        try {
+          renderizarInfoDetallada(reparacionActual);
+        } catch (e) {
+          console.error('❌ Error renderizando info detallada:', e);
+          throw new Error('Error renderizando info detallada: ' + e.message);
+        }
 
         // Renderizar observaciones
-        if (reparacionActual.observaciones && reparacionActual.observaciones.length > 0) {
-          let obsHtml = '<ul class="list-unstyled">';
-          reparacionActual.observaciones.forEach(obs => {
-            obsHtml += `<li class="mb-2"><i class="fas fa-comment"></i> ${obs}</li>`;
-          });
-          obsHtml += '</ul>';
-          document.getElementById('observacionesTexto').innerHTML = obsHtml;
-        } else {
+        try {
+          if (reparacionActual.observaciones && reparacionActual.observaciones.length > 0) {
+            let obsHtml = '<ul class="list-unstyled">';
+            reparacionActual.observaciones.forEach(obs => {
+              obsHtml += `<li class="mb-2"><i class="fas fa-comment"></i> ${obs}</li>`;
+            });
+            obsHtml += '</ul>';
+            document.getElementById('observacionesTexto').innerHTML = obsHtml;
+          } else {
+            document.getElementById('observacionesTexto').innerHTML = '<p class="text-muted">Sin observaciones</p>';
+          }
+        } catch (e) {
+          console.error('❌ Error renderizando observaciones:', e);
+          // No lanzar error, continuar
           document.getElementById('observacionesTexto').innerHTML = '<p class="text-muted">Sin observaciones</p>';
         }
 
         // Abrir modal
+        console.log('🔵 Abriendo modal...');
         if (!modalDetalle) {
           modalDetalle = new bootstrap.Modal(document.getElementById('modalDetalle'));
         }
         modalDetalle.show();
+        console.log('✅ Modal abierto exitosamente');
 
       } catch (error) {
         console.error('❌ Error abriendo modal detalle:', error);
-        mostrarError('Error al cargar el detalle de la reparación');
+        console.error('Stack:', error.stack);
+        mostrarError('Error al cargar el detalle de la reparación: ' + error.message);
       }
     }
 
