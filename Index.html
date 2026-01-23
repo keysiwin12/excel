@@ -373,11 +373,18 @@
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Nº Resguardo (Factusol) *</label>
-                <input type="text" class="form-control" id="resguardo" placeholder="Ej: RES-2025-001" required>
+                <div class="input-group">
+                  <input type="text" class="form-control bg-light" id="resguardo" placeholder="Cargando..." readonly>
+                  <button class="btn btn-outline-secondary" type="button" onclick="cargarSiguienteResguardo()" title="Recargar número">
+                    <i class="fas fa-sync-alt"></i>
+                  </button>
+                </div>
+                <small class="text-muted">Se genera automáticamente</small>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Fecha de Recepción *</label>
-                <input type="date" class="form-control" id="fechaRecepcion" required>
+                <input type="date" class="form-control" id="fechaRecepcion" required onchange="validarFechaRecepcion()">
+                <small class="text-muted">Solo hoy o ayer</small>
               </div>
             </div>
 
@@ -758,6 +765,10 @@
         return await this.call('apiMarcarComoEntregado', resguardo, numeroFactura);
       },
 
+      obtenerSiguienteResguardo: async function() {
+        return await this.call('apiObtenerSiguienteResguardo');
+      },
+
       obtenerConfiguracion: async function() {
         return await this.call('apiObtenerConfiguracion');
       }
@@ -1005,13 +1016,67 @@
       cargarReparaciones();
     }
 
-    function abrirModalNuevaReparacion() {
+    async function cargarSiguienteResguardo() {
+      try {
+        const inputResguardo = document.getElementById('resguardo');
+        inputResguardo.value = 'Cargando...';
+
+        const resultado = await API.obtenerSiguienteResguardo();
+
+        if (resultado && resultado.exito) {
+          inputResguardo.value = resultado.resguardo;
+        } else {
+          inputResguardo.value = 'ERROR';
+          mostrarError('No se pudo generar el número de resguardo');
+        }
+      } catch (error) {
+        console.error('Error cargando resguardo:', error);
+        document.getElementById('resguardo').value = 'ERROR';
+        mostrarError('Error al cargar el número de resguardo');
+      }
+    }
+
+    function validarFechaRecepcion() {
+      const inputFecha = document.getElementById('fechaRecepcion');
+      const fechaSeleccionada = new Date(inputFecha.value);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      const ayer = new Date(hoy);
+      ayer.setDate(ayer.getDate() - 1);
+
+      fechaSeleccionada.setHours(0, 0, 0, 0);
+
+      // Verificar si la fecha es futura
+      if (fechaSeleccionada > hoy) {
+        mostrarError('No se puede seleccionar una fecha futura');
+        inputFecha.value = hoy.toISOString().split('T')[0];
+        return false;
+      }
+
+      // Verificar si es anterior a ayer
+      if (fechaSeleccionada < ayer) {
+        mostrarError('Solo se puede seleccionar la fecha de hoy o de ayer');
+        inputFecha.value = hoy.toISOString().split('T')[0];
+        return false;
+      }
+
+      return true;
+    }
+
+    async function abrirModalNuevaReparacion() {
       if (!modalNuevaReparacion) {
         modalNuevaReparacion = new bootstrap.Modal(document.getElementById('modalNuevaReparacion'));
       }
       document.getElementById('formNuevaReparacion').reset();
+
       // Establecer fecha de hoy por defecto
-      document.getElementById('fechaRecepcion').value = new Date().toISOString().split('T')[0];
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('fechaRecepcion').value = hoy;
+
+      // Cargar siguiente resguardo automáticamente
+      await cargarSiguienteResguardo();
+
       modalNuevaReparacion.show();
     }
 
@@ -1040,14 +1105,30 @@
           mostrarError('La fecha de recepción es obligatoria');
           return;
         }
+        if (!validarFechaRecepcion()) {
+          return;
+        }
         if (!datos.clienteNombre) {
           mostrarError('El nombre del cliente es obligatorio');
           return;
         }
+
+        // Validación de teléfono: obligatorio, excepto si es "0" o "No tiene"
         if (!datos.clienteTelefono) {
-          mostrarError('El teléfono del cliente es obligatorio');
-          return;
+          const confirmacion = confirm('El teléfono está vacío. ¿Desea continuar sin teléfono?\n\nSi el cliente no tiene teléfono, ingrese "0" o "No tiene"');
+          if (!confirmacion) {
+            return;
+          }
         }
+
+        // Validación de email: obligatorio, excepto si es "0" o "No tiene"
+        if (!datos.clienteEmail || datos.clienteEmail === '') {
+          const confirmacion = confirm('El correo electrónico está vacío. ¿Desea continuar sin correo?\n\nSi el cliente no tiene correo, ingrese "0" o "No tiene"');
+          if (!confirmacion) {
+            return;
+          }
+        }
+
         if (!datos.equipoModelo) {
           mostrarError('El modelo/marca del equipo es obligatorio');
           return;

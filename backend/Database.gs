@@ -59,6 +59,52 @@ function getAllData() {
 // ============================================
 
 /**
+ * Genera el siguiente número de resguardo correlativo
+ * @returns {string} Siguiente número de resguardo (ej: "RES-2025-001")
+ */
+function generarSiguienteResguardo() {
+  try {
+    const sheet = getSheet();
+    const data = getAllData();
+
+    // Obtener el año actual
+    const año = new Date().getFullYear();
+
+    // Si no hay datos (solo header), comenzar desde 001
+    if (data.length <= 1) {
+      return `RES-${año}-001`;
+    }
+
+    // Buscar el último resguardo del año actual
+    let maxNumero = 0;
+    const patron = new RegExp(`^RES-${año}-(\\d+)$`);
+
+    for (let i = 1; i < data.length; i++) {
+      const resguardo = data[i][SHEET_CONFIG.columnas.resguardo];
+      if (!resguardo) continue;
+
+      const match = resguardo.toString().match(patron);
+      if (match) {
+        const numero = parseInt(match[1], 10);
+        if (numero > maxNumero) {
+          maxNumero = numero;
+        }
+      }
+    }
+
+    // Generar el siguiente número
+    const siguienteNumero = maxNumero + 1;
+    const numeroFormateado = siguienteNumero.toString().padStart(3, '0');
+
+    return `RES-${año}-${numeroFormateado}`;
+
+  } catch (error) {
+    Logger.log(`❌ Error al generar resguardo: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Crea una nueva reparación (Fase 1 - Recepción)
  * @param {Object} datos - Objeto con los datos de la reparación
  * @returns {Object} Resultado con el resguardo

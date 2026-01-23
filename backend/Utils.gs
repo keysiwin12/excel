@@ -111,6 +111,26 @@ function calcularDiasTranscurridos(fechaInicio, fechaFin) {
   return dias;
 }
 
+/**
+ * Calcula horas transcurridas entre dos fechas
+ * @param {Date} fechaInicio - Fecha de inicio
+ * @param {Date} fechaFin - Fecha de fin (por defecto hoy)
+ * @returns {number} Horas transcurridas
+ */
+function calcularHorasTranscurridas(fechaInicio, fechaFin) {
+  if (!fechaInicio) return 0;
+
+  fechaFin = fechaFin || new Date();
+
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+
+  const diferencia = fin - inicio;
+  const horas = Math.floor(diferencia / (1000 * 60 * 60));
+
+  return horas;
+}
+
 // ============================================
 // VALIDACIONES
 // ============================================
@@ -157,14 +177,24 @@ function validarDatosReparacion(datos, esCreacion) {
       errores.push("El nombre del cliente es obligatorio");
     }
 
+    // Validar teléfono: permitir excepciones "0" o "No tiene"
     if (!datos.clienteTelefono || datos.clienteTelefono.trim() === "") {
       errores.push("El teléfono del cliente es obligatorio");
-    } else if (!validarTelefono(datos.clienteTelefono)) {
-      errores.push("El teléfono no es válido");
+    } else {
+      const telefonoLimpio = datos.clienteTelefono.trim().toLowerCase();
+      const esExcepcion = telefonoLimpio === "0" || telefonoLimpio === "no tiene";
+      if (!esExcepcion && !validarTelefono(datos.clienteTelefono)) {
+        errores.push("El teléfono no es válido");
+      }
     }
 
-    if (datos.clienteEmail && !validarEmail(datos.clienteEmail)) {
-      errores.push("El email no es válido");
+    // Validar email: permitir excepciones "0" o "No tiene"
+    if (datos.clienteEmail && datos.clienteEmail.trim() !== "") {
+      const emailLimpio = datos.clienteEmail.trim().toLowerCase();
+      const esExcepcion = emailLimpio === "0" || emailLimpio === "no tiene";
+      if (!esExcepcion && !validarEmail(datos.clienteEmail)) {
+        errores.push("El email no es válido");
+      }
     }
 
     if (!datos.equipoModelo || datos.equipoModelo.trim() === "") {

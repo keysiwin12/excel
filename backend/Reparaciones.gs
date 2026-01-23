@@ -440,6 +440,25 @@ function obtenerReparacionesConAlertas() {
       const resguardo = fila[SHEET_CONFIG.columnas.resguardo];
       const estado = fila[SHEET_CONFIG.columnas.estado];
 
+      // ALERTA: Presupuesto pendiente de elaborar +24 horas
+      if (estado === "Presupuesto Pendiente") {
+        const fechaRecepcion = fila[SHEET_CONFIG.columnas.fecha];
+        if (fechaRecepcion) {
+          const horas = calcularHorasTranscurridas(fechaRecepcion, hoy);
+          if (horas >= 24) {
+            const dias = Math.floor(horas / 24);
+            alertas.push({
+              resguardo: resguardo,
+              tipo: "presupuesto_sin_elaborar",
+              horas: horas,
+              dias: dias,
+              cliente: fila[SHEET_CONFIG.columnas.nombreCliente],
+              mensaje: `Presupuesto pendiente de elaborar hace ${horas} horas (${dias} días)`
+            });
+          }
+        }
+      }
+
       // Presupuestos sin respuesta +5 días
       if (estado === "Presupuesto Enviado") {
         const fechaPpto = fila[SHEET_CONFIG.columnas.fechaElaboracionPpto];

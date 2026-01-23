@@ -131,6 +131,30 @@ function cerrarSesion() {
 // ============================================
 
 /**
+ * API: Obtiene el siguiente número de resguardo disponible
+ * @returns {Object} Siguiente resguardo
+ */
+function apiObtenerSiguienteResguardo() {
+  try {
+    verificarPermisos();
+
+    const siguiente = generarSiguienteResguardo();
+
+    return {
+      exito: true,
+      resguardo: siguiente
+    };
+
+  } catch (error) {
+    Logger.log(`❌ Error en apiObtenerSiguienteResguardo: ${error.message}`);
+    return {
+      exito: false,
+      error: error.message
+    };
+  }
+}
+
+/**
  * API: Crea una nueva reparación
  * @param {Object} datos - Datos de la reparación
  * @returns {Object} Resultado
