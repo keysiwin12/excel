@@ -1441,8 +1441,27 @@
 
         // Badge de estado
         try {
-          const badge = obtenerBadgeEstado(reparacionActual.estado);
-          document.getElementById('detalleEstadoBadge').outerHTML = badge;
+          const badgeElement = document.getElementById('detalleEstadoBadge');
+          if (badgeElement) {
+            // Obtener color y texto del badge
+            const colores = {
+              'Presupuesto Pendiente': 'info',
+              'Garantía': 'secondary',
+              'Presupuesto Enviado': 'secondary',
+              'Presupuesto Aceptado': 'success',
+              'Presupuesto Rechazado': 'danger',
+              'Pieza Pendiente': 'warning',
+              'Pieza Entregada': 'info',
+              'En Reparación': 'primary',
+              'Reparado': 'success',
+              'No tiene Reparación': 'secondary'
+            };
+            const color = colores[reparacionActual.estado] || 'secondary';
+
+            // Actualizar clases y texto (sin reemplazar el elemento)
+            badgeElement.className = `badge bg-${color}`;
+            badgeElement.textContent = reparacionActual.estado;
+          }
         } catch (e) {
           console.error('❌ Error con badge:', e);
           throw new Error('Error con badge de estado: ' + e.message);
