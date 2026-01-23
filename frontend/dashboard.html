@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Kelatos</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <?!= include('frontend/css_styles'); ?>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+    <div class="container-fluid">
+      <a class="navbar-brand d-flex align-items-center" href="?page=dashboard">
+        <img src="<?= KELATOS.logo ?>" alt="Kelatos" height="40" class="me-2">
+        <span class="fw-bold">Kelatos</span>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link active" href="?page=dashboard">
+              <i class="fas fa-home"></i> Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <button class="btn btn-light btn-sm ms-3" onclick="abrirModalNuevaReparacion()">
+              <i class="fas fa-plus"></i> Nueva Reparación
+            </button>
+          </li>
+          <li class="nav-item ms-3">
+            <span class="nav-link">
+              <i class="fas fa-user-circle"></i>
+              <span id="userName">Usuario</span>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container-fluid py-4">
+    <!-- Métricas -->
+    <div class="row mb-4">
+      <div class="col-12 mb-3">
+        <h2 class="fw-bold">
+          <i class="fas fa-chart-line"></i> Dashboard
+        </h2>
+        <p class="text-muted mb-0">Resumen general del sistema</p>
+      </div>
+
+      <!-- Card: En Diagnóstico -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">En Diagnóstico</h6>
+                <h2 class="mb-0 fw-bold" id="metricDiagnostico">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-warning bg-opacity-10">
+                <i class="fas fa-search text-warning"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Esperando Pieza -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Esperando Pieza</h6>
+                <h2 class="mb-0 fw-bold" id="metricEsperandoPieza">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-info bg-opacity-10">
+                <i class="fas fa-box text-info"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Reparando -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Reparando</h6>
+                <h2 class="mb-0 fw-bold" id="metricReparando">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-primary bg-opacity-10">
+                <i class="fas fa-wrench text-primary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card: Listos -->
+      <div class="col-md-6 col-lg-3 mb-3">
+        <div class="card metric-card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h6 class="text-muted mb-1">Listos p/ Recoger</h6>
+                <h2 class="mb-0 fw-bold" id="metricListos">-</h2>
+                <small class="text-muted">equipos</small>
+              </div>
+              <div class="metric-icon bg-success bg-opacity-10">
+                <i class="fas fa-check-circle text-success"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Búsqueda -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-8 mb-3 mb-md-0">
+                <div class="input-group">
+                  <span class="input-group-text bg-white">
+                    <i class="fas fa-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0"
+                    id="searchInput"
+                    placeholder="Buscar por cliente, teléfono, resguardo, equipo..."
+                    onkeyup="buscarReparaciones()">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-primary w-100" onclick="abrirModalNuevaReparacion()">
+                  <i class="fas fa-plus"></i> Nueva Reparación
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="row mb-4" id="alertasSection" style="display: none;">
+      <div class="col-12">
+        <div class="alert alert-warning border-0 shadow-sm">
+          <h5 class="alert-heading">
+            <i class="fas fa-exclamation-triangle"></i> Alertas Pendientes
+          </h5>
+          <div id="alertasList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pedidos Pendientes -->
+    <div class="row mb-4" id="pedidosSection">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">
+                <i class="fas fa-truck"></i> Pedidos de Piezas Pendientes
+              </h5>
+              <span class="badge bg-warning" id="pedidosPendientesCount">0</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="pedidosList" class="table-responsive">
+              <p class="text-muted text-center py-3">Cargando pedidos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Reparaciones -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+              <h5 class="mb-0">
+                <i class="fas fa-list"></i> Todas las Reparaciones
+              </h5>
+              <div class="d-flex gap-2 mt-2 mt-md-0">
+                <!-- Filtros -->
+                <select class="form-select form-select-sm" id="filterEstado" onchange="aplicarFiltros()">
+                  <option value="Todos">Todos los estados</option>
+                  <? Object.keys(ESTADOS_REPARACION).forEach(function(estado) { ?>
+                    <option value="<?= estado ?>"><?= estado ?></option>
+                  <? }); ?>
+                </select>
+
+                <select class="form-select form-select-sm" id="filterTecnico" onchange="aplicarFiltros()">
+                  <option value="Todos">Todos los técnicos</option>
+                  <? TECNICOS.forEach(function(tecnico) { ?>
+                    <option value="<?= tecnico ?>"><?= tecnico ?></option>
+                  <? }); ?>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div id="reparacionesList" class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Resguardo</th>
+                    <th>Cliente</th>
+                    <th>Equipo</th>
+                    <th>Estado</th>
+                    <th>Técnico</th>
+                    <th>Pieza</th>
+                    <th>Días</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="reparacionesTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-4">
+                      <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                      </div>
+                      <p class="mt-2 text-muted">Cargando reparaciones...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer bg-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="text-muted">Mostrando <strong id="resultadosCount">0</strong> reparaciones</span>
+              </div>
+              <nav id="pagination">
+                <!-- Paginación se generará dinámicamente -->
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Nueva Reparación -->
+  <div class="modal fade" id="modalNuevaReparacion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-plus-circle"></i> Nueva Reparación
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formNuevaReparacion">
+            <!-- Cliente -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-user"></i> Datos del Cliente
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Nombre Completo *</label>
+                <input type="text" class="form-control" id="clienteNombre" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Teléfono *</label>
+                <input type="tel" class="form-control" id="clienteTelefono" required>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-12">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" id="clienteEmail">
+              </div>
+            </div>
+
+            <!-- Equipo -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-laptop"></i> Datos del Equipo
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Marca/Ficha *</label>
+                <label for="form-label"></label>
+                <select class="form-select" id="equipoMarca" required>
+                  <option value="">Seleccionar...</option>
+                  <? MARCAS.forEach(function(marca) { ?>
+                    <option value="<?= marca ?>"><?= marca ?></option>
+                  <? }); ?>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Modelo</label>
+                <input type="text" class="form-control" id="equipoModelo" required>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-12">
+                <label class="form-label">Síntoma/Avería *</label>
+                <textarea class="form-control" id="sintoma" rows="3" required></textarea>
+              </div>
+            </div>
+
+            <!-- Estado y Técnico -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-cog"></i> Asignación
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Técnico Asignado</label>
+                <select class="form-select" id="tecnico">
+                  <option value="">Sin asignar</option>
+                  <? TECNICOS.forEach(function(tecnico) { ?>
+                    <option value="<?= tecnico ?>"><?= tecnico ?></option>
+                  <? }); ?>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Estado Inicial</label>
+                <select class="form-select" id="estado">
+                  <option value="En Diagnóstico">En Diagnóstico</option>
+                  <option value="Presupuesto Pendiente">Presupuesto Pendiente</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-12">
+                <label class="form-label">Observaciones</label>
+                <textarea class="form-control" id="observaciones" rows="2"></textarea>
+              </div>
+            </div>
+
+            <!-- Pieza/Repuesto -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-cogs"></i> ¿Necesita Pieza/Repuesto?
+            </h6>
+            <div class="row mb-3">
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="necesitaPieza" onchange="toggleSeccionPieza()">
+                  <label class="form-check-label" for="necesitaPieza">
+                    Sí, necesita pieza o repuesto
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección de Pieza (oculta por defecto) -->
+            <div id="seccionPieza" style="display: none;">
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Nombre de la Pieza</label>
+                  <input type="text" class="form-control" id="piezaNombre" placeholder="Ej: Pantalla LCD, Batería...">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Proveedor</label>
+                  <select class="form-select" id="piezaProveedor">
+                    <option value="">Sin asignar</option>
+                    <? PROVEEDORES.forEach(function(proveedor) { ?>
+                      <option value="<?= proveedor ?>"><?= proveedor ?></option>
+                    <? }); ?>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Costo Pieza (€)</label>
+                  <input type="number" class="form-control" id="piezaCosto" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Estado Pedido</label>
+                  <select class="form-select" id="piezaEstadoPedido">
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Pedido">Pedido</option>
+                    <option value="En Tránsito">En Tránsito</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Fecha Estimada de Entrega</label>
+                  <input type="date" class="form-control" id="piezaFechaEntrega">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Enlace de Compra</label>
+                  <input type="url" class="form-control" id="piezaEnlaceCompra" placeholder="https://...">
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarNuevaReparacion()">
+            <i class="fas fa-save"></i> Crear Reparación
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Datos pre-cargados del servidor -->
+  <script>
+    window._DATOS_PRECARGADOS = <?!= REPARACIONES_INICIALES || '{"exito":false,"error":"No se inyectaron datos"}' ?>;
+    window._METRICAS_PRECARGADAS = <?!= METRICAS_INICIALES || '{"exito":false,"error":"No se inyectaron métricas"}' ?>;
+  </script>
+
+  <?!= include('frontend/js_api'); ?>
+  <?!= include('frontend/js_app'); ?>
+</body>
+</html>

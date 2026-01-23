@@ -94,6 +94,11 @@
   </style>
 </head>
 <body>
+  <!-- Toast Container para Notificaciones -->
+  <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999">
+    <!-- Los toasts se insertarán aquí dinámicamente -->
+  </div>
+
   <!-- ========================================
        HTML - Estructura del Dashboard
        ======================================== -->
@@ -767,9 +772,7 @@
                 <option value="">Seleccionar...</option>
                 <option value="Iván">Iván</option>
                 <option value="Romer">Romer</option>
-                <option value="Enque">Enque</option>
                 <option value="Nelson">Nelson</option>
-                <option value="Moviles/disco">Moviles/disco</option>
                 <option value="Repuesto">Repuesto</option>
               </select>
             </div>
@@ -838,6 +841,135 @@
   </script>
 
   <script>
+    /* ========================================
+       SISTEMA DE NOTIFICACIONES - Bootstrap Toasts
+       ======================================== */
+
+    /**
+     * Función genérica para mostrar toasts de Bootstrap
+     * @param {string} titulo - Título del toast
+     * @param {string} mensaje - Mensaje del toast
+     * @param {string} tipo - Tipo de notificación: 'success', 'error', 'warning', 'info'
+     * @param {number} duracion - Duración en milisegundos antes de que desaparezca
+     */
+    function mostrarToast(titulo, mensaje, tipo = 'info', duracion = 5000) {
+      const iconos = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-xmark',
+        warning: 'fa-triangle-exclamation',
+        info: 'fa-circle-info'
+      };
+
+      const colores = {
+        success: 'text-bg-success',
+        error: 'text-bg-danger',
+        warning: 'text-bg-warning',
+        info: 'text-bg-info'
+      };
+
+      const toastId = 'toast-' + Date.now();
+      const toastHtml = `
+        <div id="${toastId}" class="toast ${colores[tipo]}" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header ${colores[tipo]}">
+            <i class="fas ${iconos[tipo]} me-2"></i>
+            <strong class="me-auto">${titulo}</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body">
+            ${mensaje}
+          </div>
+        </div>
+      `;
+
+      const container = document.querySelector('.toast-container');
+      if (!container) {
+        console.error('No se encontró el contenedor de toasts');
+        return;
+      }
+
+      container.insertAdjacentHTML('beforeend', toastHtml);
+
+      const toastElement = document.getElementById(toastId);
+      const toast = new bootstrap.Toast(toastElement, { delay: duracion });
+      toast.show();
+
+      // Eliminar del DOM después de ocultarse
+      toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+      });
+    }
+
+    /**
+     * Muestra un toast de éxito
+     */
+    function mostrarExito(mensaje) {
+      mostrarToast('Éxito', mensaje, 'success', 3000);
+    }
+
+    /**
+     * Muestra un toast de error
+     */
+    function mostrarError(mensaje) {
+      mostrarToast('Error', mensaje, 'error', 6000);
+    }
+
+    /**
+     * Muestra un toast de advertencia
+     */
+    function mostrarAdvertencia(mensaje) {
+      mostrarToast('Advertencia', mensaje, 'warning', 5000);
+    }
+
+    /**
+     * Muestra un toast de información
+     */
+    function mostrarInfo(mensaje) {
+      mostrarToast('Información', mensaje, 'info', 4000);
+    }
+
+    /**
+     * Muestra un modal de confirmación y devuelve una promesa
+     * @param {string} mensaje - Mensaje a mostrar en el modal
+     * @returns {Promise<boolean>} - true si el usuario acepta, false si cancela
+     */
+    function mostrarConfirmacion(mensaje) {
+      return new Promise((resolve) => {
+        const modalElement = document.getElementById('modalConfirmacion');
+        const modal = new bootstrap.Modal(modalElement);
+        const mensajeElement = document.getElementById('modalConfirmacionMensaje');
+        const botonAceptar = document.getElementById('modalConfirmacionAceptar');
+
+        // Establecer el mensaje
+        mensajeElement.textContent = mensaje;
+
+        // Handler para cuando se acepta
+        const handleAceptar = () => {
+          modal.hide();
+          resolve(true);
+          cleanup();
+        };
+
+        // Handler para cuando se cancela
+        const handleCancelar = () => {
+          resolve(false);
+          cleanup();
+        };
+
+        // Cleanup de event listeners
+        const cleanup = () => {
+          botonAceptar.removeEventListener('click', handleAceptar);
+          modalElement.removeEventListener('hidden.bs.modal', handleCancelar);
+        };
+
+        // Agregar event listeners
+        botonAceptar.addEventListener('click', handleAceptar);
+        modalElement.addEventListener('hidden.bs.modal', handleCancelar);
+
+        // Mostrar el modal
+        modal.show();
+      });
+    }
+
     /* ========================================
        API - Comunicación con backend
        Consolidado de js_api.html
@@ -978,7 +1110,8 @@
        Consolidado de js_app.html
        ======================================== */
 
-    let reparacionesActuales = [];
+    let reparacionesActuales = []; // Reparaciones filtradas que se muestran
+    let todasLasReparaciones = []; // SSOT - Todas las reparaciones sin filtrar
     let paginaActual = 1;
     let filtrosActuales = {};
     let modalNuevaReparacion;
@@ -1022,6 +1155,8 @@
         // Usar datos pre-cargados en lugar de llamar a la API
         if (DATOS_INICIALES && DATOS_INICIALES.exito) {
           console.log(`✅ ${DATOS_INICIALES.total} reparaciones pre-cargadas desde el servidor`);
+          // Guardar TODAS las reparaciones en el SSOT
+          todasLasReparaciones = DATOS_INICIALES.resultados;
           reparacionesActuales = DATOS_INICIALES.resultados;
           renderizarTablaReparaciones(DATOS_INICIALES.resultados);
           renderizarPaginacion(DATOS_INICIALES);
@@ -1095,43 +1230,17 @@
       const fecha = pedido.pieza.fechaEntrega ? new Date(pedido.pieza.fechaEntrega).toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'}) : '-';
       const clase = retrasado ? 'table-danger' : '';
       const icono = pedido.pieza.estadoPedido === 'En Tránsito' ? '🚚' : '📦';
-      return `<tr class="${clase}"><td><strong>${pedido.resguardo}</strong></td><td>${pedido.cliente.nombre}</td><td><small>${pedido.pieza.proveedor || '-'}</small></td><td><span class="badge bg-warning">${icono} ${pedido.pieza.estadoPedido}</span></td><td>${fecha}${retrasado ? ' <span class="badge bg-danger">⚠️</span>' : ''}</td><td><button class="btn btn-sm btn-outline-primary" onclick="alert('Funcionalidad en desarrollo')">Ver</button></td></tr>`;
+      return `<tr class="${clase}"><td><strong>${pedido.resguardo}</strong></td><td>${pedido.cliente.nombre}</td><td><small>${pedido.pieza.proveedor || '-'}</small></td><td><span class="badge bg-warning">${icono} ${pedido.pieza.estadoPedido}</span></td><td>${fecha}${retrasado ? ' <span class="badge bg-danger">⚠️</span>' : ''}</td><td><button class="btn btn-sm btn-outline-primary" onclick="mostrarInfo('Funcionalidad en desarrollo')">Ver</button></td></tr>`;
     }
 
+    /**
+     * OBSOLETA - Ya no se usa la API, ahora todo es local con SSOT Pattern
+     * Esta función solo re-aplica filtros si se llama accidentalmente
+     */
     async function cargarReparaciones() {
-      try {
-        console.log('🔵 cargarReparaciones: Iniciando carga vía API...');
-        console.log('🔵 filtrosActuales:', filtrosActuales);
-        console.log('🔵 paginaActual:', paginaActual);
-
-        mostrarLoader();
-
-        // Llamar a la API (solo para filtros/paginación, no para carga inicial)
-        const resultado = await API.buscarReparaciones(filtrosActuales, paginaActual, 50);
-
-        console.log('🔵 Resultado buscarReparaciones:', resultado);
-
-        if (resultado === null || resultado === undefined) {
-          console.error('❌ ERROR CRÍTICO: resultado es null o undefined');
-          mostrarError('Error crítico: La función del backend no retornó datos. Revisa los logs de Apps Script.');
-          return;
-        }
-
-        if (resultado && resultado.exito) {
-          console.log('✅ Búsqueda exitosa, renderizando tabla...');
-          reparacionesActuales = resultado.resultados;
-          renderizarTablaReparaciones(resultado.resultados);
-          renderizarPaginacion(resultado);
-          document.getElementById('resultadosCount').textContent = resultado.total;
-        } else {
-          console.error('❌ Error en resultado:', resultado);
-          mostrarError(resultado?.error || 'Error al cargar reparaciones');
-        }
-      } catch (error) {
-        console.error('❌ Error reparaciones:', error);
-        console.error('Stack:', error.stack);
-        mostrarError('Error al cargar reparaciones: ' + error.message);
-      }
+      console.log('⚠️ cargarReparaciones llamada - redirigiendo a filtros locales');
+      // Re-aplicar filtros localmente en lugar de llamar API
+      aplicarFiltros();
     }
 
     function renderizarTablaReparaciones(reparaciones) {
@@ -1206,28 +1315,104 @@
       div.innerHTML = html;
     }
 
+    /**
+     * OBSOLETA - Paginación deshabilitada con SSOT local
+     * Mostramos todas las reparaciones filtradas
+     */
     function cambiarPagina(pagina) {
-      paginaActual = pagina;
-      cargarReparaciones();
+      console.log('⚠️ Paginación deshabilitada - mostrando todas las reparaciones');
+      // No hacer nada - mostramos todas las reparaciones filtradas
     }
 
+    /**
+     * SSOT Pattern - Búsqueda por texto local con debounce
+     * Filtra desde todasLasReparaciones combinando con filtros de estado/técnico
+     */
     let timeoutBusqueda;
     function buscarReparaciones() {
       clearTimeout(timeoutBusqueda);
       timeoutBusqueda = setTimeout(() => {
-        filtrosActuales.busqueda = document.getElementById('searchInput').value;
-        paginaActual = 1;
-        cargarReparaciones();
-      }, 500);
+        const textoBusqueda = document.getElementById('searchInput').value.trim().toLowerCase();
+        console.log('🔍 Buscando:', textoBusqueda);
+
+        // Guardar búsqueda en filtros
+        filtrosActuales.busqueda = textoBusqueda;
+
+        // Aplicar todos los filtros (estado, técnico, búsqueda)
+        aplicarFiltrosCombinados();
+      }, 300); // Debounce de 300ms
     }
 
+    /**
+     * SSOT Pattern - Filtra las reparaciones localmente sin llamar al backend
+     * Incluye filtros por estado, técnico y búsqueda por texto
+     */
     function aplicarFiltros() {
+      console.log('🔍 Aplicando filtros localmente (SSOT Pattern)...');
+
       const estado = document.getElementById('filterEstado').value;
       const tecnico = document.getElementById('filterTecnico').value;
+
+      // Guardar filtros actuales
       filtrosActuales.estado = estado !== 'Todos' ? estado : null;
       filtrosActuales.tecnico = tecnico !== 'Todos' ? tecnico : null;
       paginaActual = 1;
-      cargarReparaciones();
+
+      // Aplicar todos los filtros
+      aplicarFiltrosCombinados();
+    }
+
+    /**
+     * Aplica todos los filtros combinados (estado, técnico, búsqueda)
+     */
+    function aplicarFiltrosCombinados() {
+      // Filtrar localmente desde todasLasReparaciones
+      let reparacionesFiltradas = [...todasLasReparaciones];
+
+      // Filtro por estado
+      if (filtrosActuales.estado) {
+        reparacionesFiltradas = reparacionesFiltradas.filter(rep => rep.estado === filtrosActuales.estado);
+        console.log(`  Filtrado por estado: ${filtrosActuales.estado}`);
+      }
+
+      // Filtro por técnico
+      if (filtrosActuales.tecnico) {
+        reparacionesFiltradas = reparacionesFiltradas.filter(rep => rep.tecnico === filtrosActuales.tecnico);
+        console.log(`  Filtrado por técnico: ${filtrosActuales.tecnico}`);
+      }
+
+      // Filtro por búsqueda de texto
+      if (filtrosActuales.busqueda && filtrosActuales.busqueda.length > 0) {
+        const busqueda = filtrosActuales.busqueda.toLowerCase();
+        reparacionesFiltradas = reparacionesFiltradas.filter(rep => {
+          // Buscar en múltiples campos - convertir todo a string primero
+          const resguardo = String(rep.resguardo || '').toLowerCase();
+          const cliente = String(rep.cliente?.nombre || '').toLowerCase();
+          const telefono = String(rep.cliente?.telefono || '').toLowerCase();
+          const email = String(rep.cliente?.email || '').toLowerCase();
+          const equipo = String(rep.equipo?.modelo || '').toLowerCase();
+          const sintoma = String(rep.sintoma || '').toLowerCase();
+
+          return resguardo.includes(busqueda) ||
+                 cliente.includes(busqueda) ||
+                 telefono.includes(busqueda) ||
+                 email.includes(busqueda) ||
+                 equipo.includes(busqueda) ||
+                 sintoma.includes(busqueda);
+        });
+        console.log(`  Filtrado por búsqueda: "${filtrosActuales.busqueda}"`);
+      }
+
+      // Actualizar reparaciones actuales
+      reparacionesActuales = reparacionesFiltradas;
+
+      // Re-renderizar tabla
+      renderizarTablaReparaciones(reparacionesFiltradas);
+
+      // Actualizar contador
+      document.getElementById('resultadosCount').textContent = reparacionesFiltradas.length;
+
+      console.log(`✅ Filtros aplicados: ${reparacionesFiltradas.length} resultados`);
     }
 
     async function cargarSiguienteResguardo() {
@@ -1329,7 +1514,7 @@
 
         // Validación de teléfono: obligatorio, excepto si es "0" o "No tiene"
         if (!datos.clienteTelefono) {
-          const confirmacion = confirm('El teléfono está vacío. ¿Desea continuar sin teléfono?\n\nSi el cliente no tiene teléfono, ingrese "0" o "No tiene"');
+          const confirmacion = await mostrarConfirmacion('El teléfono está vacío. ¿Desea continuar sin teléfono?\n\nSi el cliente no tiene teléfono, ingrese "0" o "No tiene"');
           if (!confirmacion) {
             return;
           }
@@ -1337,7 +1522,7 @@
 
         // Validación de email: obligatorio, excepto si es "0" o "No tiene"
         if (!datos.clienteEmail || datos.clienteEmail === '') {
-          const confirmacion = confirm('El correo electrónico está vacío. ¿Desea continuar sin correo?\n\nSi el cliente no tiene correo, ingrese "0" o "No tiene"');
+          const confirmacion = await mostrarConfirmacion('El correo electrónico está vacío. ¿Desea continuar sin correo?\n\nSi el cliente no tiene correo, ingrese "0" o "No tiene"');
           if (!confirmacion) {
             return;
           }
@@ -1364,10 +1549,28 @@
         if (resultado && resultado.exito) {
           modalNuevaReparacion.hide();
           mostrarExito(`Recepción ${datos.resguardo} registrada exitosamente`);
-          // Recargar página para ver datos frescos
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+
+          // Construir objeto de reparación para actualizar cache local
+          const nuevaReparacion = {
+            resguardo: datos.resguardo,
+            fechaRecepcion: datos.fechaRecepcion,
+            cliente: {
+              nombre: datos.clienteNombre,
+              telefono: datos.clienteTelefono,
+              email: datos.clienteEmail
+            },
+            equipo: {
+              modelo: datos.equipoModelo
+            },
+            sintoma: datos.sintoma,
+            estado: datos.estado,
+            tecnico: '-',
+            pieza: null,
+            fechaElaboracionPpto: null
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(nuevaReparacion);
         } else {
           mostrarError(resultado?.error || resultado?.errores?.join(', ') || 'Error al registrar');
           btn.disabled = false;
@@ -1384,12 +1587,94 @@
       document.getElementById('reparacionesTableBody').innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><p class="mt-2 text-muted">Cargando reparaciones...</p></td></tr>';
     }
 
-    function mostrarError(mensaje) {
-      alert('Error: ' + mensaje);
+    /**
+     * SSOT Pattern - Actualiza el cache local de reparaciones sin llamar al backend
+     * Agrega o actualiza una reparación en ambos arrays y re-renderiza
+     */
+    function actualizarReparacionLocal(reparacion) {
+      // Actualizar en todasLasReparaciones (SSOT completo)
+      const indexTodas = todasLasReparaciones.findIndex(r => r.resguardo === reparacion.resguardo);
+      if (indexTodas >= 0) {
+        todasLasReparaciones[indexTodas] = { ...todasLasReparaciones[indexTodas], ...reparacion };
+      } else {
+        todasLasReparaciones.unshift(reparacion);
+      }
+
+      // Actualizar en reparacionesActuales (vista filtrada)
+      const indexActuales = reparacionesActuales.findIndex(r => r.resguardo === reparacion.resguardo);
+      if (indexActuales >= 0) {
+        reparacionesActuales[indexActuales] = { ...reparacionesActuales[indexActuales], ...reparacion };
+        console.log('✅ Reparación actualizada en cache local:', reparacion.resguardo);
+      } else {
+        // Solo agregar si pasa los filtros actuales
+        let pasaFiltros = true;
+        if (filtrosActuales.estado && reparacion.estado !== filtrosActuales.estado) {
+          pasaFiltros = false;
+        }
+        if (filtrosActuales.tecnico && reparacion.tecnico !== filtrosActuales.tecnico) {
+          pasaFiltros = false;
+        }
+
+        if (pasaFiltros) {
+          reparacionesActuales.unshift(reparacion);
+          console.log('✅ Nueva reparación agregada al cache local:', reparacion.resguardo);
+        } else {
+          console.log('✅ Nueva reparación agregada a SSOT (no visible por filtros):', reparacion.resguardo);
+        }
+      }
+
+      // Re-renderizar la tabla con los datos actualizados
+      renderizarTablaReparaciones(reparacionesActuales);
+
+      // Actualizar contador
+      document.getElementById('resultadosCount').textContent = reparacionesActuales.length;
     }
 
-    function mostrarExito(mensaje) {
-      alert('Éxito: ' + mensaje);
+    /**
+     * SSOT Pattern - Actualiza las métricas manualmente sin llamar al backend
+     * Cuenta desde todasLasReparaciones para incluir todos los estados
+     */
+    function recalcularMetricas() {
+      const metricas = {
+        presupuestoPendiente: 0,
+        esperandoPieza: 0,
+        enReparacion: 0,
+        listos: 0
+      };
+
+      // Contar estados desde TODAS las reparaciones (no solo las filtradas)
+      todasLasReparaciones.forEach(rep => {
+        if (rep.estado === 'Presupuestado') metricas.presupuestoPendiente++;
+        else if (rep.estado === 'Esperando Pieza' || rep.estado === 'Pieza Pedida') metricas.esperandoPieza++;
+        else if (rep.estado === 'Reparando' || rep.estado === 'Pieza Entregada') metricas.enReparacion++;
+        else if (rep.estado === 'Listo para Entregar' || rep.estado === 'Reparado') metricas.listos++;
+      });
+
+      // Actualizar la UI
+      document.getElementById('metricPresupuesto').textContent = metricas.presupuestoPendiente;
+      document.getElementById('metricEsperandoPieza').textContent = metricas.esperandoPieza;
+      document.getElementById('metricReparando').textContent = metricas.enReparacion;
+      document.getElementById('metricListos').textContent = metricas.listos;
+
+      console.log('✅ Métricas recalculadas:', metricas);
+    }
+
+    /**
+     * Actualiza UI completa sin recargar página ni llamar backend
+     * Usa el patrón SSOT con cache local
+     */
+    async function actualizarDatosSinRecargar(reparacionActualizada = null) {
+      console.log('🔄 Actualizando UI sin recargar página (SSOT Pattern)...');
+
+      // Si se proporciona una reparación actualizada, actualizar el cache local
+      if (reparacionActualizada) {
+        actualizarReparacionLocal(reparacionActualizada);
+      }
+
+      // Recalcular métricas basadas en el cache local
+      recalcularMetricas();
+
+      console.log('✅ UI actualizada exitosamente sin recargar página');
     }
 
     // ========================================
@@ -1965,10 +2250,17 @@
           modalDetalle.hide();
           mostrarExito('Presupuesto enviado exitosamente');
 
-          // Recargar datos
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: 'Presupuestado',
+            fechaElaboracionPpto: datos.fechaElaboracion,
+            costoReparacion: datos.costoReparacion,
+            diagnostico: datos.diagnostico
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al guardar el presupuesto');
         }
@@ -1989,7 +2281,8 @@
         return;
       }
 
-      if (!confirm('¿Confirma que el cliente aceptó el presupuesto?')) {
+      const confirmado = await mostrarConfirmacion('¿Confirma que el cliente aceptó el presupuesto?');
+      if (!confirmado) {
         return;
       }
 
@@ -2000,15 +2293,21 @@
           mostrarExito(`Presupuesto aceptado. Estado: ${resultado.nuevoEstado}`);
           modalDetalle.hide();
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: resultado.nuevoEstado || 'Esperando Pieza'
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al aceptar presupuesto');
         }
 
       } catch (error) {
         console.error('❌ Error:', error);
+        
         mostrarError('Error al aceptar presupuesto: ' + error.message);
       }
     }
@@ -2047,9 +2346,14 @@
           modalDetalle.hide();
           mostrarExito('Presupuesto rechazado. Cliente debe recoger equipo.');
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: 'Presupuesto Rechazado'
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al rechazar presupuesto');
         }
@@ -2106,9 +2410,22 @@
           modalDetalle.hide();
           mostrarExito('Pedido registrado exitosamente');
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con pedido de pieza
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: 'Pieza Pedida',
+            pieza: {
+              estadoPedido: 'Pedido',
+              enlace: datos.enlace,
+              numeroPedido: datos.numeroPedido,
+              fechaPedido: datos.fechaPedido,
+              fechaEntrega: datos.fechaEstimada,
+              proveedor: datos.proveedor
+            }
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al registrar pedido');
         }
@@ -2125,7 +2442,8 @@
         return;
       }
 
-      if (!confirm('¿Marcar pieza como En Tránsito?')) {
+      const confirmado = await mostrarConfirmacion('¿Marcar pieza como En Tránsito?');
+      if (!confirmado) {
         return;
       }
 
@@ -2136,9 +2454,17 @@
           mostrarExito('Estado actualizado: En Tránsito');
           modalDetalle.hide();
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con estado de pieza
+          const reparacionActualizada = {
+            ...reparacionActual,
+            pieza: {
+              ...(reparacionActual.pieza || {}),
+              estadoPedido: 'En Tránsito'
+            }
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al actualizar estado');
         }
@@ -2155,7 +2481,8 @@
         return;
       }
 
-      if (!confirm('¿Confirma que la pieza fue recibida?')) {
+      const confirmado = await mostrarConfirmacion('¿Confirma que la pieza fue recibida?');
+      if (!confirmado) {
         return;
       }
 
@@ -2167,9 +2494,18 @@
           mostrarExito('Pieza recibida. Estado: Pieza Entregada');
           modalDetalle.hide();
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: 'Pieza Entregada',
+            pieza: {
+              ...(reparacionActual.pieza || {}),
+              estadoPedido: 'Recibido'
+            }
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al marcar como recibida');
         }
@@ -2190,7 +2526,8 @@
         return;
       }
 
-      if (!confirm('¿Iniciar reparación del equipo?')) {
+      const confirmado = await mostrarConfirmacion('¿Iniciar reparación del equipo?');
+      if (!confirmado) {
         return;
       }
 
@@ -2201,9 +2538,14 @@
           mostrarExito('Reparación iniciada');
           modalDetalle.hide();
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: 'Reparando'
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al iniciar reparación');
         }
@@ -2256,9 +2598,14 @@
           modalDetalle.hide();
           mostrarExito(`Reparación finalizada: ${resultado.nuevoEstado}`);
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Actualizar reparación local con nuevo estado
+          const reparacionActualizada = {
+            ...reparacionActual,
+            estado: resultado.nuevoEstado || 'Listo para Entregar'
+          };
+
+          // Actualizar UI sin recargar página (SSOT Pattern)
+          await actualizarDatosSinRecargar(reparacionActualizada);
         } else {
           mostrarError(resultado?.error || 'Error al finalizar reparación');
         }
@@ -2313,9 +2660,18 @@
           modalDetalle.hide();
           mostrarExito(`Equipo entregado exitosamente (${resultado.diasTotales} días)`);
 
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
+          // Remover reparación de ambos arrays (ya está entregada)
+          todasLasReparaciones = todasLasReparaciones.filter(r => r.resguardo !== reparacionActual.resguardo);
+          reparacionesActuales = reparacionesActuales.filter(r => r.resguardo !== reparacionActual.resguardo);
+
+          // Re-renderizar tabla y recalcular métricas
+          renderizarTablaReparaciones(reparacionesActuales);
+          recalcularMetricas();
+
+          // Actualizar contador
+          document.getElementById('resultadosCount').textContent = reparacionesActuales.length;
+
+          console.log('✅ Reparación entregada removida del cache local');
         } else {
           mostrarError(resultado?.error || 'Error al marcar como entregado');
         }
@@ -2329,5 +2685,31 @@
     // Exponer funciones globalmente para pruebas
     window.testAPI = API;
   </script>
+
+  <!-- Modal de Confirmación Reutilizable -->
+  <div class="modal fade" id="modalConfirmacion" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-warning text-dark">
+          <h5 class="modal-title" id="modalConfirmacionLabel">
+            <i class="fas fa-question-circle me-2"></i>Confirmación
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="modalConfirmacionMensaje">
+          <!-- Mensaje dinámico -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-1"></i>Cancelar
+          </button>
+          <button type="button" class="btn btn-primary" id="modalConfirmacionAceptar">
+            <i class="fas fa-check me-1"></i>Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

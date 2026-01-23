@@ -234,9 +234,7 @@ const ESTADOS_RECOGIDA = {
 const TECNICOS = [
   "Ivan",
   "Romer",
-  "Enque",
   "Nelson",
-  "Moviles/disco",
   "Repuesto"
 ];
 
