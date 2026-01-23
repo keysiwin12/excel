@@ -655,7 +655,8 @@ function convertirFilaAObjeto(fila, numFila) {
   return {
     fila: numFila,
     resguardo: fila[col.resguardo] || "",
-    fechaResponsablePpto: serializarFecha(fila[col.fechaResponsablePpto]),
+    fecha: serializarFecha(fila[col.fecha]), // Fecha de recepción
+    responsablePresupuesto: fila[col.fechaResponsablePpto] || "",
     fechaElaboracionPpto: serializarFecha(fila[col.fechaElaboracionPpto]),
     tecnico: fila[col.tecnico] || "",
     fechaReparacion: serializarFecha(fila[col.fechaReparacion]),
@@ -676,6 +677,7 @@ function convertirFilaAObjeto(fila, numFila) {
 
     // Estado
     estado: fila[col.estado] || "",
+    estadoRecogida: fila[col.estadoRecogida] || "PENDIENTE", // Agregado para acceso directo
     tiempoEntregaDias: fila[col.tiempoEntregaDias] || null,
 
     // Presupuesto
