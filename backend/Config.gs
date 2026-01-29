@@ -97,7 +97,8 @@ const HOJAS = {
       fecha_envio: 11,
       fecha_respuesta: 12,
       motivo_rechazo: 13,
-      notas: 14
+      notas: 14,
+      tipo_pieza: 15
     }
   },
 
@@ -224,7 +225,9 @@ const ESTADOS_PEDIDO = {
   "En Tránsito": { color: "#ffc107", icono: "🚚", descripcion: "En camino" },
   "Recibido": { color: "#28a745", icono: "✅", descripcion: "Pieza recibida" },
   "Cancelado": { color: "#dc3545", icono: "❌", descripcion: "Pedido cancelado" },
-  "Problema": { color: "#dc3545", icono: "⚠️", descripcion: "Problema con la pieza" }
+  "Problema": { color: "#dc3545", icono: "⚠️", descripcion: "Problema con la pieza" },
+  "Pieza Rota": { color: "#dc3545", icono: "🔨", descripcion: "Pieza rota durante reparación" },
+  "Pieza Defectuosa": { color: "#fd7e14", icono: "⚠️", descripcion: "Pieza defectuosa de fábrica" }
 };
 
 // ============================================

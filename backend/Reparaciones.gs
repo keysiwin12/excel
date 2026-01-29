@@ -256,72 +256,95 @@ function reportarProblemaPieza(resguardo, datos) {
       throw new Error(`Reparación ${resguardo} no encontrada`);
     }
 
-    // Crear mensaje para el historial
+    const colPed = HOJAS.pedidos.cols;
     const tiposProblema = {
+      'defectuosa': 'Pieza Defectuosa',
+      'rota': 'Pieza Rota'
+    };
+    const tiposDescripcion = {
       'defectuosa': 'Pieza defectuosa (de fábrica)',
       'rota': 'Pieza rota durante reparación'
     };
-    let mensajeHistorial = tiposProblema[datos.tipoProblema] || 'Problema con pieza';
 
-    if (datos.codigoDevolucion) {
-      mensajeHistorial += ` | Código devolución: ${datos.codigoDevolucion}`;
+    // Soportar multi-pieza (array) o pieza única (retrocompatibilidad)
+    let piezas = datos.piezas || [];
+    if (piezas.length === 0) {
+      piezas.push({
+        pedidoAnteriorId: datos.pedidoAnteriorId || '',
+        piezaId: datos.piezaId || '',
+        tipoProblema: datos.tipoProblema || 'defectuosa',
+        codigoDevolucion: datos.codigoDevolucion || '',
+        descripcion: datos.descripcion || '',
+        nuevoProveedor: datos.nuevoProveedor || '',
+        nuevoEnlace: datos.nuevoEnlace || '',
+        nuevoNumeroPedido: datos.nuevoNumeroPedido || '',
+        nuevaFechaEstimada: datos.nuevaFechaEstimada || ''
+      });
     }
-    mensajeHistorial += ` | Nuevo pedido: ${datos.nuevoProveedor} #${datos.nuevoNumeroPedido}`;
 
-    // Marcar pedidos anteriores como "Problema"
-    const colPed = HOJAS.pedidos.cols;
-    const pedidosAnteriores = obtenerPedidosDeReparacion(resguardo);
-    for (const pedAnterior of pedidosAnteriores) {
-      if (pedAnterior.estado === "Recibido" || pedAnterior.estado === "En Tránsito" || pedAnterior.estado === "Pedido") {
-        const resultadoPed = buscarPorId("pedidos", "pedido_id", pedAnterior.pedidoId);
-        if (resultadoPed) {
-          actualizarCeldas("pedidos", resultadoPed.numFila, {
-            estado: "Problema",
-            problema_tipo: datos.tipoProblema || ""
+    const pedidosCreados = [];
+
+    for (const pieza of piezas) {
+      // 1. Marcar pedido anterior con estado específico (Pieza Rota / Pieza Defectuosa)
+      if (pieza.pedidoAnteriorId) {
+        const pedidoAnterior = buscarPorId("pedidos", "pedido_id", pieza.pedidoAnteriorId);
+        if (pedidoAnterior) {
+          const estadoProblema = tiposProblema[pieza.tipoProblema] || 'Problema';
+          actualizarCeldas("pedidos", pedidoAnterior.numFila, {
+            estado: estadoProblema,
+            problema_tipo: pieza.tipoProblema || '',
+            codigo_devolucion: pieza.codigoDevolucion || ''
           });
         }
       }
+
+      // 2. Crear nuevo pedido de reemplazo
+      const pedidoId = generarId("PED", "pedidos", "pedido_id");
+      const filaPed = new Array(Object.keys(colPed).length).fill("");
+      filaPed[colPed.pedido_id] = pedidoId;
+      filaPed[colPed.pieza_id] = pieza.piezaId || "";
+      filaPed[colPed.resguardo] = resguardo;
+      filaPed[colPed.comprado_por] = pieza.nuevoProveedor || "";
+      filaPed[colPed.numero_pedido] = pieza.nuevoNumeroPedido || "";
+      filaPed[colPed.fecha_pedido] = new Date();
+      filaPed[colPed.fecha_estimada] = pieza.nuevaFechaEstimada ? new Date(pieza.nuevaFechaEstimada) : "";
+      filaPed[colPed.estado] = "En Tránsito";
+      filaPed[colPed.problema_tipo] = "";
+      filaPed[colPed.codigo_devolucion] = "";
+      filaPed[colPed.pedido_remplazo_id] = pieza.pedidoAnteriorId || "";
+      filaPed[colPed.notas] = pieza.descripcion || "";
+
+      agregarFila("pedidos", filaPed);
+      pedidosCreados.push(pedidoId);
+
+      // 3. Historial por pieza
+      let mensajeHistorial = tiposDescripcion[pieza.tipoProblema] || 'Problema con pieza';
+      if (pieza.codigoDevolucion) {
+        mensajeHistorial += ` | Código devolución: ${pieza.codigoDevolucion}`;
+      }
+      mensajeHistorial += ` | Nuevo pedido: ${pieza.nuevoProveedor} #${pieza.nuevoNumeroPedido}`;
+
+      const datosExtra = JSON.stringify({
+        tipoProblema: pieza.tipoProblema,
+        codigoDevolucion: pieza.codigoDevolucion || "",
+        pedidoAnteriorId: pieza.pedidoAnteriorId || "",
+        nuevoPedidoId: pedidoId
+      });
+      agregarEventoHistorial(resguardo, "problema_pieza", mensajeHistorial, null, datosExtra);
     }
-
-    // Registrar el nuevo pedido de reemplazo en la tabla PEDIDOS
-    const pedidoId = generarId("PED", "pedidos", "pedido_id");
-    const filaPed = new Array(Object.keys(colPed).length).fill("");
-    filaPed[colPed.pedido_id] = pedidoId;
-    filaPed[colPed.pieza_id] = datos.piezaId || "";
-    filaPed[colPed.resguardo] = resguardo;
-    filaPed[colPed.comprado_por] = datos.nuevoProveedor || "";
-    filaPed[colPed.numero_pedido] = datos.nuevoNumeroPedido || "";
-    filaPed[colPed.fecha_pedido] = new Date();
-    filaPed[colPed.fecha_estimada] = datos.nuevaFechaEstimada ? new Date(datos.nuevaFechaEstimada) : "";
-    filaPed[colPed.estado] = "En Tránsito";
-    filaPed[colPed.problema_tipo] = "";
-    filaPed[colPed.codigo_devolucion] = datos.codigoDevolucion || "";
-    filaPed[colPed.pedido_remplazo_id] = datos.pedidoAnteriorId || "";
-    filaPed[colPed.notas] = datos.descripcion || "";
-
-    agregarFila("pedidos", filaPed);
 
     // Cambiar estado de la reparación a Pieza Pendiente
     actualizarCelda("reparaciones", numFila, "estado", "Pieza Pendiente");
 
-    // Historial
-    const datosExtra = JSON.stringify({
-      tipoProblema: datos.tipoProblema,
-      codigoDevolucion: datos.codigoDevolucion || "",
-      pedidoId: pedidoId
-    });
-    agregarEventoHistorial(resguardo, "problema_pieza", mensajeHistorial, null, datosExtra);
-
     invalidarCaches();
 
-    // Retornar con la lista actualizada de pedidos
     const pedidosActualizados = obtenerPedidosDeReparacion(resguardo);
 
     return {
       exito: true,
-      mensaje: `Problema reportado. Nuevo pedido registrado.`,
+      mensaje: `${pedidosCreados.length} pieza(s) reportada(s). Nuevo(s) pedido(s): ${pedidosCreados.join(', ')}`,
       nuevoEstado: 'Pieza Pendiente',
-      pedidoId: pedidoId,
+      pedidoIds: pedidosCreados,
       pedidos: pedidosActualizados
     };
 
@@ -384,6 +407,74 @@ function marcarComoEntregado(resguardo, datos) {
 
   } catch (error) {
     Logger.log(`Error al marcar como entregado: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Envía un equipo a punto limpio (reciclaje)
+ */
+function enviarAPuntoLimpio(resguardo) {
+  try {
+    const numFila = encontrarFilaPorResguardo(resguardo);
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    const fechaReciclaje = new Date();
+
+    actualizarCeldas("reparaciones", numFila, {
+      estado_entrega: "RECICLAJE",
+      fecha_entrega: fechaReciclaje
+    });
+
+    // Calcular días totales
+    const sheet = getHoja("reparaciones");
+    const colFechaRec = HOJAS.reparaciones.cols.fecha_recepcion;
+    const fechaRecepcion = sheet.getRange(numFila, colFechaRec + 1).getValue();
+    const diasTotales = calcularDiasTranscurridos(fechaRecepcion, fechaReciclaje);
+
+    agregarEventoHistorial(resguardo, "reciclaje", `Equipo enviado a punto limpio - reciclaje (${diasTotales} días)`);
+
+    invalidarCaches();
+
+    return {
+      exito: true,
+      mensaje: `Equipo enviado a punto limpio (${diasTotales} días)`,
+      diasTotales: diasTotales
+    };
+
+  } catch (error) {
+    Logger.log(`Error al enviar a punto limpio: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza datos del cliente
+ */
+function actualizarCliente(resguardo, datos) {
+  try {
+    const numFila = encontrarFilaPorResguardo(resguardo);
+    if (!numFila) {
+      throw new Error(`Reparación ${resguardo} no encontrada`);
+    }
+
+    const cambios = {};
+    if (datos.nombre !== undefined) cambios.cliente_nombre = datos.nombre;
+    if (datos.telefono !== undefined) cambios.cliente_telefono = datos.telefono;
+    if (datos.email !== undefined) cambios.cliente_email = datos.email;
+
+    actualizarCeldas("reparaciones", numFila, cambios);
+
+    agregarEventoHistorial(resguardo, "actualizacion_cliente", "Datos del cliente actualizados");
+
+    invalidarCaches();
+
+    return { exito: true, mensaje: "Datos del cliente actualizados" };
+
+  } catch (error) {
+    Logger.log(`Error al actualizar cliente: ${error.message}`);
     throw error;
   }
 }

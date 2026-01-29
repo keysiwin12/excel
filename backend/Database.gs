@@ -598,6 +598,7 @@ function obtenerPresupuestosDeReparacion(resguardo) {
       fechaRespuesta: serializarFecha(f[colP.fecha_respuesta]),
       motivoRechazo: f[colP.motivo_rechazo] || "",
       notas: f[colP.notas] || "",
+      tipoPieza: f[colP.tipo_pieza] || "no",
       piezas: piezas,
       numFila: r.numFila
     };

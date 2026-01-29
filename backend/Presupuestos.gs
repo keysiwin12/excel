@@ -55,6 +55,7 @@ function crearPresupuesto(resguardo, datos, piezas) {
     filaP[colP.dias_entrega] = datos.diasEntrega || 0;
     filaP[colP.estado] = "borrador";
     filaP[colP.notas] = datos.notas || "";
+    filaP[colP.tipo_pieza] = datos.tipoPieza || "no";
 
     agregarFila("presupuestos", filaP);
 

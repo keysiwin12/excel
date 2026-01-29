@@ -125,7 +125,9 @@ function cambiarEstadoPedido(pedidoId, nuevoEstado, opciones) {
     if (nuevoEstado === "Recibido") {
       const pedidosReparacion = obtenerPedidosDeReparacion(resguardo);
       const todosRecibidos = pedidosReparacion.every(p => {
-        return p.estado === "Recibido" || p.estado === "Cancelado" || p.pedidoId === pedidoId;
+        return p.estado === "Recibido" || p.estado === "Cancelado" ||
+               p.estado === "Problema" || p.estado === "Pieza Rota" ||
+               p.estado === "Pieza Defectuosa" || p.pedidoId === pedidoId;
       });
 
       if (todosRecibidos) {

@@ -607,10 +607,39 @@
             <div class="card-body">
               <div class="row">
                 <div class="col-md-6">
-                  <h6 class="text-muted mb-2">Cliente</h6>
-                  <p class="mb-1"><strong id="detalleCliente">-</strong></p>
-                  <p class="mb-1"><i class="fas fa-phone"></i> <span id="detalleTelefono">-</span></p>
-                  <p class="mb-0"><i class="fas fa-envelope"></i> <span id="detalleEmail">-</span></p>
+                  <h6 class="text-muted mb-2">Cliente
+                    <button class="btn btn-sm btn-outline-secondary ms-2 py-0 px-1" id="btnEditarCliente" onclick="toggleEditarCliente()" title="Editar datos del cliente">
+                      <i class="fas fa-edit" style="font-size: 0.7rem;"></i>
+                    </button>
+                  </h6>
+                  <!-- Vista lectura -->
+                  <div id="clienteVistaLectura">
+                    <p class="mb-1"><strong id="detalleCliente">-</strong></p>
+                    <p class="mb-1"><i class="fas fa-phone"></i> <span id="detalleTelefono">-</span></p>
+                    <p class="mb-0"><i class="fas fa-envelope"></i> <span id="detalleEmail">-</span></p>
+                  </div>
+                  <!-- Vista edición (oculta) -->
+                  <div id="clienteVistaEdicion" style="display: none;">
+                    <div class="mb-2">
+                      <input type="text" class="form-control form-control-sm" id="editClienteNombre" placeholder="Nombre">
+                    </div>
+                    <div class="mb-2">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                        <input type="tel" class="form-control" id="editClienteTelefono" placeholder="Teléfono">
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                        <input type="email" class="form-control" id="editClienteEmail" placeholder="Email">
+                      </div>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-sm btn-success" onclick="guardarEditarCliente()"><i class="fas fa-check"></i> Guardar</button>
+                      <button class="btn btn-sm btn-secondary" onclick="cancelarEditarCliente()"><i class="fas fa-times"></i></button>
+                    </div>
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <h6 class="text-muted mb-2">Equipo</h6>
@@ -787,27 +816,36 @@
                 </div>
               </div>
 
-              <!-- Requiere pieza (obligatorio) -->
+              <!-- Tipo de pieza (obligatorio) -->
               <div class="mb-3">
-                <label class="form-label fw-bold">¿Requiere compra de pieza? <span class="text-danger">*</span></label>
-                <div class="d-flex gap-4">
-                  <div class="form-check">
-                    <input class="form-check-input" type="radio" name="pptoTipoPieza" id="pptoRequierePieza" value="si" onchange="toggleSeccionPiezasPpto()">
-                    <label class="form-check-label" for="pptoRequierePieza">
-                      <i class="fas fa-box text-warning"></i> Requiere compra de pieza
-                    </label>
-                  </div>
+                <label class="form-label fw-bold">¿Requiere pieza? <span class="text-danger">*</span></label>
+                <div class="d-flex gap-4 flex-wrap">
                   <div class="form-check">
                     <input class="form-check-input" type="radio" name="pptoTipoPieza" id="pptoNoRequierePieza" value="no" onchange="toggleSeccionPiezasPpto()">
                     <label class="form-check-label" for="pptoNoRequierePieza">
-                      <i class="fas fa-tools text-success"></i> No requiere compra de pieza
+                      <i class="fas fa-tools text-success"></i> No requiere pieza
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="pptoTipoPieza" id="pptoPiezaStock" value="stock" onchange="toggleSeccionPiezasPpto()">
+                    <label class="form-check-label" for="pptoPiezaStock">
+                      <i class="fas fa-warehouse text-info"></i> Pieza en stock
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="pptoTipoPieza" id="pptoPiezaPedido" value="pedido" onchange="toggleSeccionPiezasPpto()">
+                    <label class="form-check-label" for="pptoPiezaPedido">
+                      <i class="fas fa-shopping-cart text-warning"></i> Pieza por pedido
                     </label>
                   </div>
                 </div>
                 <small class="d-block text-muted mt-1">Debe seleccionar una opción para guardar el presupuesto.</small>
               </div>
 
-              <!-- Sección de piezas (oculta por defecto) -->
+              <!-- seccionPiezaStock: ya no se usa, el costo se ingresa en Costo Piezas -->
+              <div id="seccionPiezaStock" style="display: none;"></div>
+
+              <!-- Sección de piezas por pedido (oculta por defecto) -->
               <div id="seccionPiezasPpto" style="display: none;">
                 <div class="card border-warning mb-3">
                   <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
@@ -930,7 +968,7 @@
             <label class="form-label">¿Cómo terminó la reparación? *</label>
             <div>
               <div class="form-check">
-                <input class="form-check-input" type="radio" name="resultadoReparacion" id="resultadoReparado" value="reparado" checked onchange="toggleOpcionesFinalizarReparacion()">
+                <input class="form-check-input" type="radio" name="resultadoReparacion" id="resultadoReparado" value="reparado" onchange="toggleOpcionesFinalizarReparacion()">
                 <label class="form-check-label" for="resultadoReparado">
                   ✅ Reparado
                 </label>
@@ -947,7 +985,7 @@
           <!-- Opciones cuando está Reparado (solo si tiene pieza) -->
           <div class="mb-3" id="divPiezaOkReparado" style="display: none;">
             <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="finalizarPiezaOk" checked>
+              <input class="form-check-input" type="checkbox" id="finalizarPiezaOk">
               <label class="form-check-label" for="finalizarPiezaOk">
                 <i class="fas fa-check-circle text-success"></i> Pieza OK (funcionó correctamente)
               </label>
@@ -1017,75 +1055,18 @@
         <div class="modal-body">
           <input type="hidden" id="problemaPiezaResguardo">
 
-          <!-- Información de la pieza actual -->
-          <div class="alert alert-secondary mb-4">
-            <h6 class="alert-heading"><i class="fas fa-info-circle"></i> Pieza Actual</h6>
-            <div class="row">
-              <div class="col-md-6">
-                <small class="text-muted">Proveedor:</small>
-                <p class="mb-1 fw-bold" id="problemaPiezaProveedor">-</p>
-              </div>
-              <div class="col-md-6">
-                <small class="text-muted">Nº Pedido Anterior:</small>
-                <p class="mb-0 fw-bold" id="problemaPiezaNumeroPedido">-</p>
-              </div>
-            </div>
+          <div class="alert alert-info py-2 mb-3">
+            <i class="fas fa-info-circle"></i> Seleccione la(s) pieza(s) con problema y complete los datos del nuevo pedido de reemplazo.
           </div>
 
-          <!-- Tipo de problema -->
-          <div class="mb-4">
-            <label class="form-label fw-bold">Tipo de Problema *</label>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="tipoProblemaPieza" id="problemaDefectuosa" value="defectuosa" checked onchange="toggleCodigoDevolucion()">
-              <label class="form-check-label" for="problemaDefectuosa">
-                <i class="fas fa-times-circle text-danger"></i> Pieza defectuosa (de fábrica)
-              </label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="tipoProblemaPieza" id="problemaRota" value="rota" onchange="toggleCodigoDevolucion()">
-              <label class="form-check-label" for="problemaRota">
-                <i class="fas fa-hammer text-warning"></i> Pieza rota durante la reparación
-              </label>
-            </div>
+          <!-- Lista dinámica de piezas recibidas -->
+          <div id="listaPiezasProblema">
+            <!-- Se genera dinámicamente en abrirModalProblemaPieza() -->
           </div>
 
-          <!-- Código de devolución (solo para pieza defectuosa) -->
-          <div class="mb-4" id="divCodigoDevolucion">
-            <label class="form-label">Código de Devolución</label>
-            <input type="text" class="form-control" id="problemaPiezaCodigoDevolucion" placeholder="Ej: RMA-123456">
-            <small class="text-muted">Código proporcionado por el proveedor para la devolución</small>
-          </div>
-
-          <hr class="my-4">
-
-          <!-- Nuevo pedido -->
-          <h6 class="text-warning mb-3"><i class="fas fa-redo"></i> Nuevo Pedido de Reemplazo</h6>
-          <div class="row mb-3">
-            <div class="col-md-12">
-              <label class="form-label">Descripción de la pieza *</label>
-              <input type="text" class="form-control" id="problemaPiezaDescripcion" placeholder="Ej: Pantalla LCD iPhone 12">
-            </div>
-          </div>
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Proveedor *</label>
-              <select class="form-select" id="problemaPiezaNuevoProveedor">
-                <option value="">Seleccione proveedor...</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Enlace de Compra *</label>
-              <input type="url" class="form-control" id="problemaPiezaNuevoEnlace" placeholder="https://..." required>
-            </div>
-          </div>
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Nº Pedido Nuevo *</label>
-              <input type="text" class="form-control" id="problemaPiezaNuevoNumeroPedido" placeholder="Ej: 112-8866544-7799">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Fecha Estimada Entrega *</label>
-              <input type="date" class="form-control" id="problemaPiezaNuevaFechaEstimada">
+          <div id="sinPiezasProblema" style="display: none;">
+            <div class="alert alert-warning">
+              <i class="fas fa-exclamation-triangle"></i> No se encontraron piezas recibidas para reportar problema.
             </div>
           </div>
         </div>
@@ -1470,6 +1451,14 @@
         return await this.call('apiMarcarComoEntregado', resguardo, datos);
       },
 
+      enviarAPuntoLimpio: async function(resguardo) {
+        return await this.call('apiEnviarAPuntoLimpio', resguardo);
+      },
+
+      actualizarCliente: async function(resguardo, datos) {
+        return await this.call('apiActualizarCliente', resguardo, datos);
+      },
+
       obtenerSiguienteResguardo: async function() {
         return await this.call('apiObtenerSiguienteResguardo');
       },
@@ -1807,9 +1796,11 @@
     }
 
     function obtenerBadgeEstado(estado) {
+      if (estado === 'Garantía') {
+        return `<span class="badge" style="background-color: #e83e8c; color: white;">Garantía</span>`;
+      }
       const colores = {
         'Presupuesto Pendiente': 'info',
-        'Garantía': 'purple',
         'Presupuesto Enviado': 'secondary',
         'Presupuesto Aceptado': 'success',
         'Presupuesto Rechazado': 'danger',
@@ -1874,12 +1865,15 @@
       // Determinar fecha de inicio según si necesita pieza
       const pptoAceptadoDias = rep.presupuestos?.find(p => p.estado === 'aceptado') || rep.presupuestos?.[0];
       const costoPiezas = pptoAceptadoDias?.costoPiezas || 0;
-      const ultimoPedido = rep.pedidos?.[0];
-      const estadoPedido = ultimoPedido?.estado || '';
+      // Buscar pedido activo o el último recibido para calcular días
+      const ultimoPedidoActivo = rep.pedidos?.find(p =>
+        p.estado === 'En Tránsito' || p.estado === 'Pedido' || p.estado === 'Pendiente'
+      ) || rep.pedidos?.find(p => p.estado === 'Recibido') || rep.pedidos?.[rep.pedidos.length - 1];
+      const estadoPedidoDias = ultimoPedidoActivo?.estado || '';
 
-      if (costoPiezas > 0 && estadoPedido === 'Recibido') {
+      if (costoPiezas > 0 && estadoPedidoDias === 'Recibido') {
         // Con pieza recibida: contar desde fecha de recepción de pieza
-        fechaInicio = ultimoPedido?.fechaRecepcion;
+        fechaInicio = ultimoPedidoActivo?.fechaRecepcion;
       } else if (costoPiezas === 0 && pptoAceptadoDias?.fechaRespuesta) {
         // Sin pieza: contar desde fecha de respuesta del presupuesto
         fechaInicio = pptoAceptadoDias.fechaRespuesta;
@@ -2254,6 +2248,13 @@
           if (!confirmacion) {
             return;
           }
+        } else if (datos.clienteEmail !== '0' && datos.clienteEmail.toLowerCase() !== 'no tiene') {
+          // Validar formato de email
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(datos.clienteEmail)) {
+            mostrarError('El email no es válido. Ingrese un email correcto o "0" / "No tiene" si no aplica.');
+            return;
+          }
         }
 
         if (!datos.equipoModelo) {
@@ -2411,6 +2412,62 @@
     let reparacionActual = null;
     let modalDetalle;
     let modalGestionPresupuestos;
+
+    function toggleEditarCliente() {
+      const vistaLectura = document.getElementById('clienteVistaLectura');
+      const vistaEdicion = document.getElementById('clienteVistaEdicion');
+
+      if (vistaEdicion.style.display === 'none') {
+        // Pasar a modo edición
+        document.getElementById('editClienteNombre').value = reparacionActual?.cliente?.nombre || '';
+        document.getElementById('editClienteTelefono').value = reparacionActual?.cliente?.telefono || '';
+        document.getElementById('editClienteEmail').value = reparacionActual?.cliente?.email || '';
+        vistaLectura.style.display = 'none';
+        vistaEdicion.style.display = '';
+      } else {
+        cancelarEditarCliente();
+      }
+    }
+
+    function cancelarEditarCliente() {
+      document.getElementById('clienteVistaLectura').style.display = '';
+      document.getElementById('clienteVistaEdicion').style.display = 'none';
+    }
+
+    async function guardarEditarCliente() {
+      const nombre = document.getElementById('editClienteNombre').value.trim();
+      const telefono = document.getElementById('editClienteTelefono').value.trim();
+      const email = document.getElementById('editClienteEmail').value.trim();
+
+      if (!nombre) {
+        mostrarError('El nombre es obligatorio');
+        return;
+      }
+
+      try {
+        const resultado = await API.actualizarCliente(reparacionActual.resguardo, { nombre, telefono, email });
+        if (resultado && resultado.exito) {
+          // Actualizar datos locales
+          reparacionActual.cliente = { ...reparacionActual.cliente, nombre, telefono, email };
+
+          // Actualizar vista
+          document.getElementById('detalleCliente').textContent = nombre;
+          document.getElementById('detalleTelefono').textContent = telefono || 'No especificado';
+          document.getElementById('detalleEmail').textContent = email || 'No especificado';
+
+          // Actualizar en arrays globales
+          const repGlobal = todasLasReparaciones.find(r => r.resguardo === reparacionActual.resguardo);
+          if (repGlobal) repGlobal.cliente = { ...repGlobal.cliente, nombre, telefono, email };
+          renderizarTablaReparaciones(reparacionesActuales);
+
+          cancelarEditarCliente();
+        } else {
+          mostrarError(resultado?.error || 'Error al guardar');
+        }
+      } catch (error) {
+        mostrarError('Error al guardar: ' + error.message);
+      }
+    }
 
     async function abrirModalDetalle(resguardo) {
       try {
@@ -2718,15 +2775,24 @@
       const estado = rep.estado;
       let html = '';
 
-      // FASE 1: Garantía (caso especial)
+      // FASE 1: Garantía (caso especial - sin presupuesto)
       if (estado === 'Garantía') {
         html = `
-          <div class="card border-secondary">
-            <div class="card-body">
-              <h5 class="card-title text-secondary">
+          <div class="card border-info">
+            <div class="card-body bg-info bg-opacity-10">
+              <h5 class="card-title" style="color: #e83e8c;">
                 <i class="fas fa-shield-alt"></i> Equipo en Garantía
               </h5>
-              <p class="card-text">Este equipo está cubierto por garantía. Seguir proceso especial de garantía.</p>
+              <p class="card-text">Equipo cubierto por garantía. No requiere presupuesto. Puede iniciar reparación directamente o registrar pedido de pieza si es necesario.</p>
+              <hr>
+              <div class="d-flex gap-2">
+                <button class="btn btn-success" onclick="abrirModalIniciarReparacion()">
+                  <i class="fas fa-tools"></i> Iniciar Reparación
+                </button>
+                <button class="btn btn-warning" onclick="abrirModalRegistrarPedido()">
+                  <i class="fas fa-shopping-cart"></i> Registrar Pedido de Pieza
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -2779,9 +2845,10 @@
       else if (estado === 'Presupuesto Aceptado') {
         const pptoAceptado = rep.presupuestos?.find(p => p.estado === 'aceptado') || rep.presupuestos?.[0];
         const costoPiezas = pptoAceptado?.costoPiezas || 0;
+        const tipoPieza = pptoAceptado?.tipoPieza || (costoPiezas > 0 ? 'pedido' : 'no');
 
-        if (costoPiezas > 0) {
-          // Necesita pieza -> Mostrar botón para registrar pedido
+        if (tipoPieza === 'pedido') {
+          // Necesita pieza por pedido -> Mostrar botón para registrar pedido
           html = `
             <div class="card border-warning">
               <div class="card-body bg-warning bg-opacity-10">
@@ -2818,7 +2885,11 @@
       }
       // FASE 4: Pieza Pendiente -> Registrar Pedido
       else if (estado === 'Pieza Pendiente') {
-        const estadoPedido = rep.pedidos?.[0]?.estado || '';
+        // Buscar el pedido activo más reciente (ignorar Problema, Cancelado, Recibido)
+        const pedidoActivo = rep.pedidos?.find(p =>
+          p.estado === 'En Tránsito' || p.estado === 'Pedido' || p.estado === 'Pendiente'
+        ) || rep.pedidos?.[rep.pedidos.length - 1];
+        const estadoPedido = pedidoActivo?.estado || '';
         if (!estadoPedido || estadoPedido === 'Pendiente') {
           html = `
             <div class="card border-warning">
@@ -2896,7 +2967,8 @@
       // FASE 5: En Reparación -> Finalizar
       else if (estado === 'En Reparación') {
         const pptoAceptadoRep = rep.presupuestos?.find(p => p.estado === 'aceptado') || rep.presupuestos?.[0];
-        const tienePieza = pptoAceptadoRep?.costoPiezas > 0;
+        const tienePieza = (pptoAceptadoRep?.costoPiezas > 0) ||
+                           (rep.pedidos && rep.pedidos.length > 0);
         html = `
           <div class="card border-primary">
             <div class="card-body bg-primary bg-opacity-10">
@@ -2934,20 +3006,30 @@
                 </h5>
                 <p class="card-text">El equipo está ${mensaje}. Esperando que el cliente recoja.</p>
                 <hr>
-                <button class="btn btn-success" onclick="abrirModalEntregarEquipo()">
-                  <i class="fas fa-hand-holding"></i> Marcar como Entregado
-                </button>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-success" onclick="abrirModalEntregarEquipo()">
+                    <i class="fas fa-hand-holding"></i> Marcar como Entregado
+                  </button>
+                  ${estado === 'No tiene Reparación' || estado === 'Presupuesto Rechazado' ? `
+                  <button class="btn btn-secondary" onclick="enviarAPuntoLimpio()">
+                    <i class="fas fa-recycle"></i> Enviar a Punto Limpio
+                  </button>` : ''}
+                </div>
               </div>
             </div>
           `;
-        } else if (estadoRecogida === 'ENTREGADO') {
+        } else if (estadoRecogida === 'ENTREGADO' || estadoRecogida === 'RECICLAJE') {
+          const mensajeCierre = estadoRecogida === 'RECICLAJE'
+            ? 'El equipo fue enviado a punto limpio (reciclaje). Este caso ha finalizado.'
+            : 'El equipo fue entregado al cliente. Este caso ha finalizado.';
+          const iconoCierre = estadoRecogida === 'RECICLAJE' ? 'fa-recycle' : 'fa-check-double';
           html = `
             <div class="card border-success">
               <div class="card-body">
                 <h5 class="card-title text-success">
-                  <i class="fas fa-check-double"></i> Caso Cerrado
+                  <i class="fas ${iconoCierre}"></i> Caso Cerrado
                 </h5>
-                <p class="card-text">El equipo fue entregado al cliente. Este caso ha finalizado.</p>
+                <p class="card-text">${mensajeCierre}</p>
               </div>
             </div>
           `;
@@ -3298,14 +3380,39 @@
 
     function toggleSeccionPiezasPpto() {
       const seleccion = document.querySelector('input[name="pptoTipoPieza"]:checked');
-      const requiere = seleccion && seleccion.value === 'si';
-      document.getElementById('seccionPiezasPpto').style.display = requiere ? '' : 'none';
-      if (!requiere) {
-        // Limpiar piezas si no requiere
-        document.getElementById('contenedorPiezasPpto').innerHTML = '';
-        document.getElementById('pptoCostoPieza').value = '0.00';
-        calcularGananciaPpto();
+      const valor = seleccion?.value;
+
+      // Mostrar sección de piezas por pedido
+      document.getElementById('seccionPiezasPpto').style.display = valor === 'pedido' ? '' : 'none';
+
+      // Campo Costo Piezas: editable solo en modo "stock"
+      const campoCostoPieza = document.getElementById('pptoCostoPieza');
+      if (valor === 'stock') {
+        campoCostoPieza.readOnly = false;
+        campoCostoPieza.classList.remove('bg-light');
+        campoCostoPieza.setAttribute('onchange', 'calcularGananciaPpto()');
+      } else {
+        campoCostoPieza.readOnly = true;
+        campoCostoPieza.classList.add('bg-light');
+        campoCostoPieza.removeAttribute('onchange');
       }
+
+      if (valor === 'no') {
+        document.getElementById('contenedorPiezasPpto').innerHTML = '';
+        campoCostoPieza.value = '0.00';
+        calcularGananciaPpto();
+      } else if (valor === 'stock') {
+        document.getElementById('contenedorPiezasPpto').innerHTML = '';
+        campoCostoPieza.value = '';
+        campoCostoPieza.focus();
+      } else if (valor === 'pedido') {
+        campoCostoPieza.value = '0.00';
+      }
+    }
+
+    function actualizarCostoPiezaStock() {
+      // Ya no se usa - el costo se ingresa directamente en pptoCostoPieza
+      calcularGananciaPpto();
     }
 
     function agregarPiezaPpto() {
@@ -3398,10 +3505,10 @@
         // Validar radio de pieza
         const seleccionPieza = document.querySelector('input[name="pptoTipoPieza"]:checked');
         if (!seleccionPieza) {
-          mostrarError('Debe seleccionar si requiere compra de pieza o no');
+          mostrarError('Debe seleccionar una opción de pieza');
           return;
         }
-        const necesitaPieza = seleccionPieza.value === 'si';
+        const tipoPieza = seleccionPieza.value; // 'no', 'stock', 'pedido'
 
         const datos = {
           responsable: document.getElementById('pptoResponsable').value,
@@ -3417,13 +3524,22 @@
         if (!datos.diasReparacion || datos.diasReparacion < 1) { mostrarError('Los días de reparación deben ser al menos 1'); return; }
 
         let piezasData = [];
-        if (necesitaPieza) {
+
+        if (tipoPieza === 'stock') {
+          const costoStock = parseFloat(document.getElementById('pptoCostoPieza').value);
+          if (!costoStock || costoStock <= 0) {
+            mostrarError('El costo de la pieza en stock debe ser mayor a 0');
+            return;
+          }
+          datos.costoPieza = costoStock;
+        }
+
+        if (tipoPieza === 'pedido') {
           piezasData = obtenerPiezasPptoFormulario();
           if (piezasData.length === 0) {
             mostrarError('Debe agregar al menos una pieza');
             return;
           }
-          // Validar campos obligatorios de cada pieza
           for (let i = 0; i < piezasData.length; i++) {
             const p = piezasData[i];
             if (!p.descripcion || !p.descripcion.trim()) {
@@ -3451,7 +3567,8 @@
           diasEntrega: datos.diasReparacion,
           costoReparacion: datos.costoReparacion,
           costoPiezas: datos.costoPieza,
-          gananciaNeta: datos.gananciaNeta
+          gananciaNeta: datos.gananciaNeta,
+          tipoPieza: tipoPieza
         };
 
         console.log('Guardando borrador:', presupuestoData, piezasData);
@@ -3723,6 +3840,7 @@
       if (pptoActual && pptoActual.piezas && pptoActual.piezas.length > 0) {
         pptoActual.piezas.forEach(pieza => {
           piezasDelPresupuesto.push({
+            piezaId: pieza.piezaId || '',
             proveedor: pieza.proveedorId || '',
             enlace: pieza.enlace || '',
             descripcion: pieza.descripcion || '',
@@ -3732,7 +3850,7 @@
 
         // Renderizar las piezas del presupuesto
         piezasDelPresupuesto.forEach((pieza, index) => {
-          agregarPiezaConDatos(obtenerNombreProveedor(pieza.proveedor), pieza.enlace, pieza.descripcion || '', true);
+          agregarPiezaConDatos(obtenerNombreProveedor(pieza.proveedor), pieza.enlace, pieza.descripcion || '', true, pieza.piezaId);
         });
       } else {
         // No hay piezas del presupuesto, agregar una vacía
@@ -3859,6 +3977,7 @@
                 <input type="text" class="form-control descripcion-input" data-pieza="${contadorPiezas}" value="${descripcion || ''}" placeholder="Ej: Pantalla LCD iPhone 12" required>
               </div>
             </div>
+
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Proveedor *</label>
@@ -3869,6 +3988,7 @@
                 <input type="url" class="form-control enlace-input" data-pieza="${contadorPiezas}" value="${enlace}" placeholder="https://...">
               </div>
             </div>
+
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Número de Pedido *</label>
@@ -3886,35 +4006,39 @@
       container.insertAdjacentHTML('beforeend', piezaHTML);
     }
 
-    function agregarPiezaConDatos(proveedor, enlace, descripcion, soloLectura) {
+    function agregarPiezaConDatos(proveedor, enlace, descripcion, soloLectura, piezaId) {
       contadorPiezas++;
       const container = document.getElementById('contenedorPiezas');
 
       const piezaHTML = `
         <div class="card mb-3" id="pieza-${contadorPiezas}">
+          <input type="hidden" class="pieza-id-input" value="${piezaId || ''}">
           <div class="card-header bg-light d-flex justify-content-between align-items-center">
             <strong>Pieza #${contadorPiezas}</strong>
-            ${!soloLectura && contadorPiezas > 1 ? `<button type="button" class="btn btn-sm btn-danger" onclick="eliminarPieza(${contadorPiezas})">
-              <i class="fas fa-trash"></i> Eliminar
-            </button>` : ''}
+            ${!soloLectura && contadorPiezas > 1 ? `
+              <button type="button" class="btn btn-sm btn-danger" onclick="eliminarPieza(${contadorPiezas})">
+                <i class="fas fa-trash"></i> Eliminar
+              </button>` : ''}
           </div>
           <div class="card-body">
             <div class="row mb-3">
               <div class="col-md-12">
                 <label class="form-label">Descripción de la pieza ${soloLectura ? '<span class="badge bg-secondary">Del presupuesto</span>' : '*'}</label>
-                <input type="text" class="form-control descripcion-input" data-pieza="${contadorPiezas}" value="${descripcion || ''}" ${soloLectura ? 'readonly' : ''} ${soloLectura ? 'style="background-color: #e9ecef;"' : ''} placeholder="Ej: Pantalla LCD iPhone 12" required>
+                <input type="text" class="form-control descripcion-input" data-pieza="${contadorPiezas}" value="${descripcion || ''}" ${soloLectura ? 'readonly style="background-color: #e9ecef;"' : ''} placeholder="Ej: Pantalla LCD iPhone 12" required>
               </div>
             </div>
+
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Proveedor ${soloLectura ? '<span class="badge bg-secondary">Del presupuesto</span>' : '*'}</label>
-                <input type="text" class="form-control proveedor-input" data-pieza="${contadorPiezas}" value="${proveedor}" ${soloLectura ? 'readonly' : ''} ${soloLectura ? 'style="background-color: #e9ecef;"' : ''}>
+                <input type="text" class="form-control proveedor-input" data-pieza="${contadorPiezas}" value="${proveedor}" ${soloLectura ? 'readonly style="background-color: #e9ecef;"' : ''}>
               </div>
               <div class="col-md-6">
                 <label class="form-label">Enlace de Compra ${soloLectura ? '<span class="badge bg-secondary">Del presupuesto</span>' : ''}</label>
-                <input type="url" class="form-control enlace-input" data-pieza="${contadorPiezas}" value="${enlace}" ${soloLectura ? 'readonly' : ''} ${soloLectura ? 'style="background-color: #e9ecef;"' : ''} placeholder="https://...">
+                <input type="url" class="form-control enlace-input" data-pieza="${contadorPiezas}" value="${enlace}" ${soloLectura ? 'readonly style="background-color: #e9ecef;"' : ''} placeholder="https://...">
               </div>
             </div>
+
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Número de Pedido *</label>
@@ -3928,7 +4052,6 @@
           </div>
         </div>
       `;
-
       container.insertAdjacentHTML('beforeend', piezaHTML);
     }
 
@@ -3955,6 +4078,7 @@
         }
 
         // Recoger todas las piezas como array de objetos
+        const piezaIds = Array.from(document.querySelectorAll('.pieza-id-input')).map(el => el.value);
         const descripciones = Array.from(document.querySelectorAll('.descripcion-input')).map(el => el.value.trim());
         const proveedores = Array.from(document.querySelectorAll('.proveedor-input')).map(el => el.value.trim());
         const fechasEstimadas = Array.from(document.querySelectorAll('.fecha-estimada-input')).map(el => el.value);
@@ -3969,6 +4093,7 @@
 
         // Construir array de piezas (un pedido por pieza)
         const piezas = proveedores.map((prov, i) => ({
+          piezaId: piezaIds[i] || '',
           descripcion: descripciones[i] || '',
           proveedor: prov,
           enlace: enlaces[i] || '',
@@ -4183,10 +4308,11 @@
       document.getElementById('finalizarFecha').value = new Date().toISOString().split('T')[0];
       document.getElementById('finalizarTecnico').value = '';
       document.getElementById('finalizarObservaciones').value = '';
-      document.getElementById('resultadoReparado').checked = true;
+      document.getElementById('resultadoReparado').checked = false;
+      document.getElementById('resultadoNoReparado').checked = false;
 
       // Resetear opciones de pieza
-      document.getElementById('finalizarPiezaOk').checked = true;
+      document.getElementById('finalizarPiezaOk').checked = false;
       document.getElementById('finalizarPiezaNoResuelve').checked = false;
       document.getElementById('finalizarCodigoDevolucion').value = '';
 
@@ -4205,21 +4331,23 @@
     }
 
     function toggleOpcionesFinalizarReparacion() {
-      const esReparado = document.getElementById('resultadoReparado').checked;
+      const seleccion = document.querySelector('input[name="resultadoReparacion"]:checked');
+      const esReparado = seleccion && seleccion.value === 'reparado';
+      const esNoReparado = seleccion && seleccion.value === 'no_reparado';
       const divPiezaOkReparado = document.getElementById('divPiezaOkReparado');
       const divOpcionesNoReparado = document.getElementById('divOpcionesNoReparado');
 
-      // Solo mostrar opciones si tiene pieza
-      if (finalizarTienePieza) {
+      // Solo mostrar opciones si tiene pieza y hay selección
+      if (finalizarTienePieza && seleccion) {
         divPiezaOkReparado.style.display = esReparado ? 'block' : 'none';
-        divOpcionesNoReparado.style.display = esReparado ? 'none' : 'block';
+        divOpcionesNoReparado.style.display = esNoReparado ? 'block' : 'none';
       } else {
         divPiezaOkReparado.style.display = 'none';
         divOpcionesNoReparado.style.display = 'none';
       }
 
-      // Resetear cuando cambia
-      if (!esReparado) {
+      // Resetear cuando cambia a no reparado
+      if (esNoReparado) {
         document.getElementById('finalizarPiezaNoResuelve').checked = false;
         toggleCodigoDevolucionFinalizar();
       }
@@ -4234,10 +4362,15 @@
     }
 
     async function guardarFinalizarReparacion() {
-      const esReparado = document.getElementById('resultadoReparado').checked;
+      const seleccionResultado = document.querySelector('input[name="resultadoReparacion"]:checked');
+      if (!seleccionResultado) {
+        mostrarError('Debe seleccionar el resultado de la reparación');
+        return;
+      }
+      const esReparado = seleccionResultado.value === 'reparado';
 
       const datos = {
-        resultado: document.querySelector('input[name="resultadoReparacion"]:checked').value,
+        resultado: seleccionResultado.value,
         tecnico: document.getElementById('finalizarTecnico').value,
         fecha: document.getElementById('finalizarFecha').value,
         observaciones: document.getElementById('finalizarObservaciones').value.trim()
@@ -4247,10 +4380,20 @@
       if (finalizarTienePieza) {
         if (esReparado) {
           datos.piezaOk = document.getElementById('finalizarPiezaOk').checked;
+          if (!datos.piezaOk) {
+            mostrarError('Debe confirmar el estado de la pieza marcando la casilla');
+            return;
+          }
         } else {
           datos.piezaNoResuelve = document.getElementById('finalizarPiezaNoResuelve').checked;
-          if (datos.piezaNoResuelve) {
-            datos.codigoDevolucion = document.getElementById('finalizarCodigoDevolucion').value.trim();
+          if (!datos.piezaNoResuelve) {
+            mostrarError('Debe marcar la casilla sobre el estado de la pieza');
+            return;
+          }
+          datos.codigoDevolucion = document.getElementById('finalizarCodigoDevolucion').value.trim();
+          if (!datos.codigoDevolucion) {
+            mostrarError('El código de devolución es obligatorio');
+            return;
           }
         }
       }
@@ -4296,40 +4439,121 @@
 
     let modalProblemaPieza;
 
+    function obtenerOpcionesProveedores() {
+      let html = '<option value="">Seleccione proveedor...</option>';
+      if (window._PROVEEDORES) {
+        try {
+          const proveedores = typeof window._PROVEEDORES === 'string' ? JSON.parse(window._PROVEEDORES) : window._PROVEEDORES;
+          proveedores.forEach(p => {
+            html += `<option value="${p.proveedorId || p.nombre}">${p.nombre}</option>`;
+          });
+        } catch(e) { console.error('Error cargando proveedores:', e); }
+      }
+      return html;
+    }
+
     function abrirModalProblemaPieza() {
       if (!reparacionActual) {
         mostrarError('No hay reparación seleccionada');
         return;
       }
 
-      const ultimoPedido = reparacionActual.pedidos?.[0] || {};
-
-      // Cargar información de la pieza actual
       document.getElementById('problemaPiezaResguardo').value = reparacionActual.resguardo;
-      document.getElementById('problemaPiezaProveedor').textContent = ultimoPedido.compradoPor || '-';
-      document.getElementById('problemaPiezaNumeroPedido').textContent = ultimoPedido.numeroPedido || '-';
 
-      // Resetear formulario
-      document.getElementById('problemaDefectuosa').checked = true;
-      document.getElementById('problemaPiezaCodigoDevolucion').value = '';
-      document.getElementById('problemaPiezaDescripcion').value = '';
-      document.getElementById('problemaPiezaNuevoEnlace').value = '';
-      document.getElementById('problemaPiezaNuevoNumeroPedido').value = '';
-      document.getElementById('problemaPiezaNuevaFechaEstimada').value = '';
+      // Obtener pedidos recibidos (los que pueden tener problema)
+      const pedidosRecibidos = (reparacionActual.pedidos || []).filter(p => p.estado === 'Recibido');
 
-      // Cargar dropdown de proveedores
-      const selectProv = document.getElementById('problemaPiezaNuevoProveedor');
-      selectProv.innerHTML = '<option value="">Seleccione proveedor...</option>';
-      if (window._PROVEEDORES) {
-        try {
-          const proveedores = typeof window._PROVEEDORES === 'string' ? JSON.parse(window._PROVEEDORES) : window._PROVEEDORES;
-          proveedores.forEach(p => {
-            selectProv.innerHTML += `<option value="${p.proveedorId || p.nombre}">${p.nombre}</option>`;
-          });
-        } catch(e) { console.error('Error cargando proveedores:', e); }
+      const container = document.getElementById('listaPiezasProblema');
+      const sinPiezas = document.getElementById('sinPiezasProblema');
+
+      if (pedidosRecibidos.length === 0) {
+        container.innerHTML = '';
+        sinPiezas.style.display = '';
+      } else {
+        sinPiezas.style.display = 'none';
+        const opcionesProveedores = obtenerOpcionesProveedores();
+
+        container.innerHTML = pedidosRecibidos.map((pedido, idx) => `
+          <div class="card mb-3 border-warning pieza-problema-card" data-pedido-id="${pedido.pedidoId}" data-pieza-id="${pedido.piezaId || ''}">
+            <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center gap-2">
+              <div class="form-check mb-0">
+                <input class="form-check-input problema-check" type="checkbox" id="problemaCheck_${idx}" onchange="togglePiezaProblema(${idx})">
+                <label class="form-check-label fw-bold" for="problemaCheck_${idx}">
+                  Pieza #${idx + 1}: ${pedido.notas || 'Sin descripción'}
+                </label>
+              </div>
+            </div>
+
+            <div class="card-body" id="problemaDetalle_${idx}" style="display: none;">
+              <!-- Info pieza actual -->
+              <div class="alert alert-secondary py-2 mb-3">
+                <div class="row">
+                  <div class="col-md-4"><small class="text-muted">Proveedor:</small><br><strong>${pedido.compradoPor || '-'}</strong></div>
+                  <div class="col-md-4"><small class="text-muted">Nº Pedido:</small><br><strong>${pedido.numeroPedido || '-'}</strong></div>
+                  <div class="col-md-4"><small class="text-muted">Pedido ID:</small><br><strong>${pedido.pedidoId || '-'}</strong></div>
+                </div>
+              </div>
+
+              <!-- Tipo de problema -->
+              <div class="mb-3">
+                <label class="form-label fw-bold">Tipo de Problema *</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="tipoProblema_${idx}" id="problemaDefectuosa_${idx}" value="defectuosa" checked onchange="toggleCodigoDevolucionPieza(${idx})">
+                    <label class="form-check-label" for="problemaDefectuosa_${idx}">
+                      <i class="fas fa-times-circle text-danger"></i> Defectuosa
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="tipoProblema_${idx}" id="problemaRota_${idx}" value="rota" onchange="toggleCodigoDevolucionPieza(${idx})">
+                    <label class="form-check-label" for="problemaRota_${idx}">
+                      <i class="fas fa-hammer text-warning"></i> Rota
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Código devolución (solo defectuosa) -->
+              <div class="mb-3" id="divCodDevolucion_${idx}">
+                <label class="form-label">Código de Devolución *</label>
+                <input type="text" class="form-control problema-codigo-input" data-idx="${idx}" placeholder="Ej: RMA-123456">
+              </div>
+
+              <hr class="my-3">
+              <h6 class="text-warning mb-3"><i class="fas fa-redo"></i> Nuevo Pedido de Reemplazo</h6>
+
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <label class="form-label">Descripción de la pieza *</label>
+                  <input type="text" class="form-control problema-descripcion-input" data-idx="${idx}" value="${pedido.notas || ''}" placeholder="Ej: Pantalla LCD iPhone 12">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Proveedor *</label>
+                  <select class="form-select problema-proveedor-input" data-idx="${idx}">
+                    ${opcionesProveedores}
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Enlace de Compra *</label>
+                  <input type="url" class="form-control problema-enlace-input" data-idx="${idx}" placeholder="https://...">
+                </div>
+              </div>
+              <div class="row mb-3">
+                <div class="col-md-6">
+                  <label class="form-label">Nº Pedido Nuevo *</label>
+                  <input type="text" class="form-control problema-numero-input" data-idx="${idx}" placeholder="Ej: 112-8866544-7799">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Fecha Estimada Entrega *</label>
+                  <input type="date" class="form-control problema-fecha-input" data-idx="${idx}">
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
       }
-
-      toggleCodigoDevolucion();
 
       if (!modalProblemaPieza) {
         modalProblemaPieza = new bootstrap.Modal(document.getElementById('modalProblemaPieza'));
@@ -4337,77 +4561,98 @@
       modalProblemaPieza.show();
     }
 
-    function toggleCodigoDevolucion() {
-      const tipoProblema = document.querySelector('input[name="tipoProblemaPieza"]:checked').value;
-      const divCodigo = document.getElementById('divCodigoDevolucion');
+    function togglePiezaProblema(idx) {
+      const checked = document.getElementById(`problemaCheck_${idx}`).checked;
+      document.getElementById(`problemaDetalle_${idx}`).style.display = checked ? '' : 'none';
+    }
 
-      // Mostrar código de devolución solo para pieza defectuosa
-      if (tipoProblema === 'defectuosa') {
-        divCodigo.style.display = 'block';
-      } else {
-        divCodigo.style.display = 'none';
-        document.getElementById('problemaPiezaCodigoDevolucion').value = '';
+    function toggleCodigoDevolucionPieza(idx) {
+      const tipo = document.querySelector(`input[name="tipoProblema_${idx}"]:checked`)?.value;
+      const div = document.getElementById(`divCodDevolucion_${idx}`);
+      if (div) {
+        div.style.display = tipo === 'defectuosa' ? '' : 'none';
       }
     }
 
     async function guardarProblemaPieza() {
       const resguardo = document.getElementById('problemaPiezaResguardo').value;
-      const tipoProblema = document.querySelector('input[name="tipoProblemaPieza"]:checked').value;
-      const codigoDevolucion = document.getElementById('problemaPiezaCodigoDevolucion').value.trim();
-      const descripcion = document.getElementById('problemaPiezaDescripcion').value.trim();
-      const nuevoProveedor = document.getElementById('problemaPiezaNuevoProveedor').value.trim();
-      const nuevoEnlace = document.getElementById('problemaPiezaNuevoEnlace').value.trim();
-      const nuevoNumeroPedido = document.getElementById('problemaPiezaNuevoNumeroPedido').value.trim();
-      const nuevaFechaEstimada = document.getElementById('problemaPiezaNuevaFechaEstimada').value;
+
+      // Recoger piezas seleccionadas
+      const cards = document.querySelectorAll('.pieza-problema-card');
+      const piezasSeleccionadas = [];
+
+      cards.forEach((card, idx) => {
+        const checked = document.getElementById(`problemaCheck_${idx}`)?.checked;
+        if (!checked) return;
+
+        const tipoProblema = document.querySelector(`input[name="tipoProblema_${idx}"]:checked`)?.value || 'defectuosa';
+        const codigoDevolucion = card.querySelector('.problema-codigo-input')?.value?.trim() || '';
+        const descripcion = card.querySelector('.problema-descripcion-input')?.value?.trim() || '';
+        const nuevoProveedor = card.querySelector('.problema-proveedor-input')?.value?.trim() || '';
+        const nuevoEnlace = card.querySelector('.problema-enlace-input')?.value?.trim() || '';
+        const nuevoNumeroPedido = card.querySelector('.problema-numero-input')?.value?.trim() || '';
+        const nuevaFechaEstimada = card.querySelector('.problema-fecha-input')?.value || '';
+
+        piezasSeleccionadas.push({
+          pedidoAnteriorId: card.dataset.pedidoId,
+          piezaId: card.dataset.piezaId || '',
+          tipoProblema,
+          codigoDevolucion,
+          descripcion,
+          nuevoProveedor,
+          nuevoEnlace,
+          nuevoNumeroPedido,
+          nuevaFechaEstimada
+        });
+      });
 
       // Validaciones
-      if (!descripcion) {
-        mostrarError('La descripción de la pieza es obligatoria');
-        return;
-      }
-      if (!nuevoProveedor) {
-        mostrarError('El proveedor es obligatorio');
-        return;
-      }
-      if (!nuevoEnlace) {
-        mostrarError('El enlace de compra es obligatorio');
-        return;
-      }
-      if (!nuevoNumeroPedido) {
-        mostrarError('El número de pedido es obligatorio');
-        return;
-      }
-      if (!nuevaFechaEstimada) {
-        mostrarError('La fecha estimada de entrega es obligatoria');
+      if (piezasSeleccionadas.length === 0) {
+        mostrarError('Debe seleccionar al menos una pieza con problema');
         return;
       }
 
-      const datos = {
-        tipoProblema,
-        codigoDevolucion,
-        descripcion,
-        nuevoProveedor,
-        nuevoEnlace,
-        nuevoNumeroPedido,
-        nuevaFechaEstimada
-      };
+      for (let i = 0; i < piezasSeleccionadas.length; i++) {
+        const p = piezasSeleccionadas[i];
+        const num = i + 1;
+        if (p.tipoProblema === 'defectuosa' && !p.codigoDevolucion) {
+          mostrarError(`Pieza #${num}: El código de devolución es obligatorio para piezas defectuosas`);
+          return;
+        }
+        if (!p.descripcion) {
+          mostrarError(`Pieza #${num}: La descripción es obligatoria`);
+          return;
+        }
+        if (!p.nuevoProveedor) {
+          mostrarError(`Pieza #${num}: El proveedor es obligatorio`);
+          return;
+        }
+        if (!p.nuevoEnlace) {
+          mostrarError(`Pieza #${num}: El enlace de compra es obligatorio`);
+          return;
+        }
+        if (!p.nuevoNumeroPedido) {
+          mostrarError(`Pieza #${num}: El número de pedido es obligatorio`);
+          return;
+        }
+        if (!p.nuevaFechaEstimada) {
+          mostrarError(`Pieza #${num}: La fecha estimada es obligatoria`);
+          return;
+        }
+      }
 
-      // Cerrar modales inmediatamente y mostrar toast de progreso
+      // Cerrar modales y mostrar toast
       modalProblemaPieza.hide();
       modalDetalle.hide();
-      const toast = mostrarGuardando('Reportando problema con pieza...');
+      const toast = mostrarGuardando(`Reportando problema con ${piezasSeleccionadas.length} pieza(s)...`);
 
       try {
+        const datos = { piezas: piezasSeleccionadas };
         const resultado = await API.reportarProblemaPieza(resguardo, datos);
 
         if (resultado && resultado.exito) {
-          const mensajesProblema = {
-            'defectuosa': 'Pieza defectuosa reportada. Nuevo pedido registrado.',
-            'rota': 'Pieza rota. Nuevo pedido registrado.'
-          };
-          toast.exito(mensajesProblema[tipoProblema] || 'Problema reportado');
+          toast.exito(resultado.mensaje || 'Problema(s) reportado(s). Nuevo(s) pedido(s) registrado(s).');
 
-          // Actualizar caché local
           const reparacionActualizada = {
             ...reparacionActual,
             estado: resultado.nuevoEstado || 'Pieza Pendiente',
@@ -4418,9 +4663,8 @@
         } else {
           toast.error(resultado?.error || 'Error al reportar problema');
         }
-
       } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('Error:', error);
         toast.error('Error al reportar problema: ' + error.message);
       }
     }
@@ -4502,6 +4746,37 @@
       } catch (error) {
         console.error('❌ Error:', error);
         toast.error('Error al marcar como entregado: ' + error.message);
+      }
+    }
+
+    async function enviarAPuntoLimpio() {
+      if (!reparacionActual) return;
+
+      const confirmado = await mostrarConfirmacion('¿Confirma que desea enviar este equipo a punto limpio (reciclaje)?');
+      if (!confirmado) return;
+
+      const resguardoActual = reparacionActual.resguardo;
+      modalDetalle.hide();
+      const toast = mostrarGuardando('Enviando a punto limpio...');
+
+      try {
+        const resultado = await API.enviarAPuntoLimpio(resguardoActual);
+
+        if (resultado && resultado.exito) {
+          toast.exito(`Equipo enviado a punto limpio (${resultado.diasTotales} días)`);
+
+          todasLasReparaciones = todasLasReparaciones.filter(r => r.resguardo !== resguardoActual);
+          reparacionesActuales = reparacionesActuales.filter(r => r.resguardo !== resguardoActual);
+
+          renderizarTablaReparaciones(reparacionesActuales);
+          recalcularMetricas();
+          document.getElementById('resultadosCount').textContent = reparacionesActuales.length;
+        } else {
+          toast.error(resultado?.error || 'Error al enviar a punto limpio');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Error al enviar a punto limpio: ' + error.message);
       }
     }
 

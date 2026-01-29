@@ -456,6 +456,24 @@ function apiMarcarComoEntregado(resguardo, datos) {
   }
 }
 
+function apiEnviarAPuntoLimpio(resguardo) {
+  try {
+    verificarPermisos();
+    return enviarAPuntoLimpio(resguardo);
+  } catch (error) {
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiActualizarCliente(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return actualizarCliente(resguardo, datos);
+  } catch (error) {
+    return { exito: false, error: error.message };
+  }
+}
+
 // ============================================
 // API - HISTORIAL (NUEVO)
 // ============================================
