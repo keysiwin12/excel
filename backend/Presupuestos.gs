@@ -242,7 +242,7 @@ function enviarPresupuesto(presupuestoId) {
  * @param {string} presupuestoId
  * @returns {Object}
  */
-function aceptarPresupuesto(presupuestoId) {
+function aceptarPresupuesto(presupuestoId, opciones) {
   try {
     const resultado = buscarPorId("presupuestos", "presupuesto_id", presupuestoId);
     if (!resultado) {
@@ -276,10 +276,14 @@ function aceptarPresupuesto(presupuestoId) {
     }
 
     // Actualizar reparación: estado + presupuesto_aceptado_id
-    actualizarReparacion(resguardo, {
+    const cambiosRep = {
       estado: "Presupuesto Aceptado",
       presupuesto_aceptado_id: presupuestoId
-    });
+    };
+    if (opciones && opciones.equipoEnLocal === false) {
+      cambiosRep.equipo_en_local = "NO";
+    }
+    actualizarReparacion(resguardo, cambiosRep);
 
     // Historial
     agregarEventoHistorial(
@@ -287,6 +291,14 @@ function aceptarPresupuesto(presupuestoId) {
       "presupuesto_aceptado",
       `Presupuesto v${version} aceptado por el cliente (${presupuestoId})`
     );
+
+    if (opciones && opciones.equipoEnLocal === false) {
+      agregarEventoHistorial(
+        resguardo,
+        "equipo_devuelto",
+        "Cliente se lleva el equipo temporalmente hasta que llegue la pieza"
+      );
+    }
 
     CacheService.getScriptCache().remove('metricas-dashboard');
 

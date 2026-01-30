@@ -76,7 +76,9 @@ const HOJAS = {
       estado_entrega: 14,
       observaciones: 15,
       creado_por: 16,
-      fecha_creacion: 17
+      fecha_creacion: 17,
+      tipo_recepcion: 18,
+      equipo_en_local: 19
     }
   },
 

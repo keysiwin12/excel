@@ -42,7 +42,7 @@ function doGet(e) {
 
     // Pre-cargar datos del dashboard
     try {
-      const reparaciones = buscarReparaciones({}, 1, 50);
+      const reparaciones = buscarReparaciones({finalizadas: false}, 1, 50);
       template.REPARACIONES_INICIALES = JSON.stringify({
         exito: true,
         resultados: reparaciones.resultados || [],
@@ -301,10 +301,10 @@ function apiEnviarPresupuesto(presupuestoId) {
  * API: Acepta un presupuesto (rechaza los demás)
  * @param {string} presupuestoId
  */
-function apiAceptarPresupuesto(presupuestoId) {
+function apiAceptarPresupuesto(presupuestoId, opciones) {
   try {
     verificarPermisos();
-    return aceptarPresupuesto(presupuestoId);
+    return aceptarPresupuesto(presupuestoId, opciones || {});
   } catch (error) {
     return { exito: false, error: error.message };
   }
@@ -451,6 +451,18 @@ function apiMarcarComoEntregado(resguardo, datos) {
   try {
     verificarPermisos();
     return marcarComoEntregado(resguardo, datos);
+  } catch (error) {
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiMarcarEquipoRecibido(resguardo) {
+  try {
+    verificarPermisos();
+    actualizarReparacion(resguardo, { equipo_en_local: "SI" });
+    agregarEventoHistorial(resguardo, "equipo_recibido", "Cliente trajo el equipo al local");
+    CacheService.getScriptCache().remove('metricas-dashboard');
+    return { exito: true, mensaje: "Equipo recibido en local" };
   } catch (error) {
     return { exito: false, error: error.message };
   }

@@ -325,6 +325,8 @@ function crearReparacion(datos) {
     fila[cols.observaciones] = "";
     fila[cols.creado_por] = datos.creadoPor || Session.getActiveUser().getEmail();
     fila[cols.fecha_creacion] = new Date();
+    fila[cols.tipo_recepcion] = datos.tipoRecepcion || "LOCAL";
+    fila[cols.equipo_en_local] = datos.equipoEnLocal || "SI";
 
     agregarFila("reparaciones", fila);
 
@@ -411,6 +413,30 @@ function buscarReparaciones(filtros, pagina, porPagina) {
 
       // Saltar filas vacías
       if (!fila[cols.cliente_nombre]) continue;
+
+      // Filtro finalizadas: ENTREGADO, RECICLAJE o ENVIO
+      const estadoEntregaFila = fila[cols.estado_entrega] || "";
+      const esFinalizadaFila = (estadoEntregaFila === "ENTREGADO" || estadoEntregaFila === "RECICLAJE" || estadoEntregaFila === "ENVIO");
+      if (filtros.finalizadas === true && !esFinalizadaFila) continue;
+      if (filtros.finalizadas === false && esFinalizadaFila) continue;
+
+      // Filtro por rango de fechas (fecha_entrega)
+      if (filtros.fechaDesde || filtros.fechaHasta) {
+        const fechaEntregaFila = fila[cols.fecha_entrega];
+        if (!fechaEntregaFila) continue;
+        const fechaE = new Date(fechaEntregaFila);
+        fechaE.setHours(0, 0, 0, 0);
+        if (filtros.fechaDesde) {
+          const desde = new Date(filtros.fechaDesde);
+          desde.setHours(0, 0, 0, 0);
+          if (fechaE < desde) continue;
+        }
+        if (filtros.fechaHasta) {
+          const hasta = new Date(filtros.fechaHasta);
+          hasta.setHours(23, 59, 59, 999);
+          if (fechaE > hasta) continue;
+        }
+      }
 
       // Filtro por estado
       if (filtros.estado && filtros.estado !== "Todos") {
@@ -542,6 +568,8 @@ function convertirFilaAReparacion(fila, numFila) {
     numeroFactura: fila[col.numero_factura] || "",
     fechaEntrega: serializarFecha(fila[col.fecha_entrega]),
     estadoEntrega: fila[col.estado_entrega] || "PENDIENTE",
+    tipoRecepcion: fila[col.tipo_recepcion] || "LOCAL",
+    equipoEnLocal: fila[col.equipo_en_local] || "SI",
     observaciones: fila[col.observaciones] || "",
     creadoPor: fila[col.creado_por] || "",
     fechaCreacion: serializarFecha(fila[col.fecha_creacion]),
@@ -798,6 +826,7 @@ function obtenerMetricas() {
       listos: 0,
       garantia: 0,
       totalReparaciones: 0,
+      totalFinalizadas: 0,
       alertas: [],
       presupuestosRetrasados: [],
       equiposRetrasados: []
@@ -817,6 +846,12 @@ function obtenerMetricas() {
       const estado = fila[cols.estado];
       const estadoEntrega = fila[cols.estado_entrega];
       const resguardo = fila[cols.resguardo];
+
+      // Excluir finalizadas de las métricas activas
+      if (estadoEntrega === "ENTREGADO" || estadoEntrega === "RECICLAJE" || estadoEntrega === "ENVIO") {
+        metricas.totalFinalizadas++;
+        continue;
+      }
 
       // Contar por estado
       if (estado === "Presupuesto Pendiente") {

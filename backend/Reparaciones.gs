@@ -372,10 +372,11 @@ function marcarComoEntregado(resguardo, datos) {
     }
 
     const fechaRecogida = new Date(datos.fechaRecogida || new Date());
+    const tipoEntrega = datos.tipoEntrega || "ENTREGADO";
 
     // Actualizar campos de la reparación
     const cambios = {
-      estado_entrega: "ENTREGADO",
+      estado_entrega: tipoEntrega,
       fecha_entrega: fechaRecogida
     };
 
@@ -392,7 +393,8 @@ function marcarComoEntregado(resguardo, datos) {
     const diasTotales = calcularDiasTranscurridos(fechaRecepcion, fechaRecogida);
 
     // Historial
-    let desc = `Equipo entregado al cliente (${diasTotales} días)`;
+    const descripcionEntrega = tipoEntrega === 'ENVIO' ? 'Equipo enviado por mensajería' : 'Equipo entregado al cliente en local';
+    let desc = `${descripcionEntrega} (${diasTotales} días)`;
     if (datos.numeroFactura) desc += ` - Factura: ${datos.numeroFactura}`;
     if (datos.observaciones) desc += ` - ${datos.observaciones}`;
     agregarEventoHistorial(resguardo, "entrega", desc);

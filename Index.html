@@ -93,6 +93,69 @@
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: var(--kelatos-primary); border-radius: 5px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--kelatos-secondary); }
+
+    /* ========================================
+       SIDEBAR
+       ======================================== */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 250px;
+      height: 100vh;
+      background: #1e293b;
+      color: #e2e8f0;
+      z-index: 1050;
+      transition: transform 0.3s ease;
+      overflow-y: auto;
+      box-shadow: 2px 0 15px rgba(0,0,0,0.2);
+    }
+    .sidebar.collapsed {
+      transform: translateX(-250px);
+    }
+    .sidebar-header {
+      padding: 1rem 1.25rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .sidebar .nav-link {
+      color: #cbd5e1;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+    .sidebar .nav-link:hover {
+      background: #334155;
+      color: #fff;
+    }
+    .sidebar .nav-link.active {
+      background: rgba(23,104,234,0.15);
+      color: #60a5fa;
+      border-left-color: #60a5fa;
+      font-weight: 600;
+    }
+    .sidebar .nav-link .badge {
+      font-size: 0.7rem;
+      margin-left: auto;
+    }
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 1040;
+    }
   </style>
 </head>
 <body>
@@ -108,6 +171,9 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
     <div class="container-fluid">
+      <button class="btn btn-outline-light me-2 d-flex align-items-center" onclick="toggleSidebar()" title="Menú">
+        <i class="fas fa-bars"></i>
+      </button>
       <a class="navbar-brand d-flex align-items-center" href="#">
         <img src="<?= KELATOS.logo ?>" alt="Kelatos" height="40" class="me-2">
         <span class="fw-bold">Kelatos</span>
@@ -140,8 +206,33 @@
     </div>
   </nav>
 
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar collapsed">
+    <div class="sidebar-header">
+      <span><i class="fas fa-bars me-2"></i> Menú</span>
+      <button class="btn btn-sm btn-outline-light" onclick="toggleSidebar()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <ul class="nav flex-column mt-2">
+      <li class="nav-item">
+        <a class="nav-link active" id="navActivas" onclick="navegarA('activas')">
+          <i class="fas fa-tools"></i> Reparaciones Activas
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="navHistorial" onclick="navegarA('historial')">
+          <i class="fas fa-history"></i> Historial
+          <span class="badge bg-secondary" id="badgeHistorial" style="display:none;">0</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()" style="display:none;"></div>
+
   <!-- Main Content -->
   <div class="container-fluid py-4">
+  <div id="vistaActivas">
     <!-- Métricas -->
     <div class="row mb-4">
       <div class="col-12 mb-3">
@@ -426,6 +517,12 @@
                   <option value="Todos">Todos los técnicos</option>
                   <!-- Options loaded dynamically -->
                 </select>
+
+                <select class="form-select form-select-sm" id="filterEquipoLocal" onchange="aplicarFiltros()">
+                  <option value="Todos">Equipo: Todos</option>
+                  <option value="SI">En local</option>
+                  <option value="NO">Cliente se llevó</option>
+                </select>
               </div>
             </div>
           </div>
@@ -435,6 +532,7 @@
                 <thead class="table-light">
                   <tr>
                     <th>Resguardo</th>
+                    <th>Fecha Recepción</th>
                     <th>Cliente</th>
                     <th>Equipo</th>
                     <th>Estado</th>
@@ -447,7 +545,7 @@
                 </thead>
                 <tbody id="reparacionesTableBody">
                   <tr>
-                    <td colspan="9" class="text-center py-4">
+                    <td colspan="10" class="text-center py-4">
                       <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Cargando...</span>
                       </div>
@@ -471,7 +569,103 @@
         </div>
       </div>
     </div>
-  </div>
+  </div><!-- fin vistaActivas -->
+
+  <!-- Vista Historial -->
+  <div id="vistaHistorial" style="display:none;">
+    <div class="row mb-4">
+      <div class="col-12 mb-3">
+        <h2 class="fw-bold">
+          <i class="fas fa-history text-primary"></i> Historial de Reparaciones
+        </h2>
+        <p class="text-muted mb-0">Reparaciones finalizadas y entregadas</p>
+      </div>
+    </div>
+
+    <!-- Filtros historial -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-4">
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                  <input type="text" class="form-control border-start-0" id="historialSearchInput"
+                    placeholder="Buscar por resguardo, cliente, equipo..."
+                    onkeyup="buscarHistorial()">
+                </div>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Desde</label>
+                <input type="date" class="form-control" id="historialFechaDesde" onchange="buscarHistorial()">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small text-muted mb-1">Hasta</label>
+                <input type="date" class="form-control" id="historialFechaHasta" onchange="buscarHistorial()">
+              </div>
+              <div class="col-md-2">
+                <select class="form-select" id="historialFilterEntrega" onchange="buscarHistorial()">
+                  <option value="Todos">Todos los estados</option>
+                  <option value="ENTREGADO">Entregado en local</option>
+                  <option value="ENVIO">Envío mensajería</option>
+                  <option value="RECICLAJE">Reciclaje</option>
+                </select>
+              </div>
+              <div class="col-md-2 text-end">
+                <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltrosHistorial()">
+                  <i class="fas fa-eraser"></i> Limpiar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla historial -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Resguardo</th>
+                    <th>Cliente</th>
+                    <th>Equipo</th>
+                    <th>Estado Final</th>
+                    <th>Entrega</th>
+                    <th>Fecha Entrega</th>
+                    <th>Técnico</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="historialTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                      <i class="fas fa-spinner fa-spin fa-2x mb-3 d-block"></i>
+                      Cargando historial...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card-footer bg-white d-flex justify-content-between align-items-center">
+            <small class="text-muted" id="historialResultadosCount">0 resultados</small>
+            <nav>
+              <ul class="pagination pagination-sm mb-0" id="historialPagination">
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div><!-- fin vistaHistorial -->
+
+  </div><!-- fin container-fluid -->
 
   <!-- Modal: Nueva Reparación (Fase 1 - Recepción) -->
   <div class="modal fade" id="modalNuevaReparacion" tabindex="-1">
@@ -546,6 +740,26 @@
               <div class="col-12">
                 <label class="form-label">Síntoma / Avería *</label>
                 <textarea class="form-control" id="sintoma" rows="3" placeholder="Describe el problema reportado por el cliente..." required></textarea>
+              </div>
+            </div>
+
+            <!-- Tipo de Recepción -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-truck"></i> Tipo de Recepción
+            </h6>
+            <div class="row mb-4">
+              <div class="col-12">
+                <div class="btn-group w-100" role="group">
+                  <input type="radio" class="btn-check" name="tipoRecepcion" id="recepcionLocal" value="LOCAL" checked>
+                  <label class="btn btn-outline-secondary" for="recepcionLocal">
+                    <i class="fas fa-store"></i> Cliente trajo al local
+                  </label>
+
+                  <input type="radio" class="btn-check" name="tipoRecepcion" id="recepcionEnvio" value="ENVIO">
+                  <label class="btn btn-outline-secondary" for="recepcionEnvio">
+                    <i class="fas fa-shipping-fast"></i> Recibido por envío
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -1092,6 +1306,7 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="entregarResguardo">
+          <input type="hidden" id="entregarTipoEntrega" value="ENTREGADO">
           <div class="mb-3">
             <label class="form-label">Número de Factura (opcional)</label>
             <input type="text" class="form-control" id="entregarFactura" placeholder="001234">
@@ -1391,12 +1606,16 @@
         return await this.call('apiEnviarPresupuestos', resguardo);
       },
 
-      aceptarPresupuesto: async function(presupuestoId) {
-        return await this.call('apiAceptarPresupuesto', presupuestoId);
+      aceptarPresupuesto: async function(presupuestoId, opciones) {
+        return await this.call('apiAceptarPresupuesto', presupuestoId, opciones);
       },
 
       rechazarPresupuesto: async function(presupuestoId, motivo) {
         return await this.call('apiRechazarPresupuesto', presupuestoId, motivo);
+      },
+
+      marcarEquipoRecibido: async function(resguardo) {
+        return await this.call('apiMarcarEquipoRecibido', resguardo);
       },
 
       // Legacy methods (keep for compatibility during transition)
@@ -1742,6 +1961,209 @@
       return `<tr class="${clase}"><td><strong>${pedido.resguardo}</strong></td><td>${pedido.compradoPor || '-'}</td><td><small>${pedido.numeroPedido || '-'}</small></td><td><span class="badge bg-warning">${icono} ${pedido.estado}</span></td><td>${fecha}${retrasado ? ' <span class="badge bg-danger">⚠️</span>' : ''}</td><td><button class="btn btn-sm btn-outline-primary" onclick="mostrarInfo('Funcionalidad en desarrollo')">Ver</button></td></tr>`;
     }
 
+    // ========================================
+    // SIDEBAR Y NAVEGACIÓN
+    // ========================================
+    let sidebarAbierto = false;
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebarAbierto = !sidebarAbierto;
+      if (sidebarAbierto) {
+        sidebar.classList.remove('collapsed');
+        overlay.style.display = 'block';
+      } else {
+        sidebar.classList.add('collapsed');
+        overlay.style.display = 'none';
+      }
+    }
+
+    let vistaActual = 'activas';
+    let historialCargado = false;
+    let historialReparaciones = [];
+    let historialPaginaActual = 1;
+    let historialTotalPaginas = 1;
+
+    function navegarA(vista) {
+      // Cerrar sidebar
+      if (sidebarAbierto) toggleSidebar();
+
+      // Ocultar todas las vistas
+      document.getElementById('vistaActivas').style.display = 'none';
+      document.getElementById('vistaHistorial').style.display = 'none';
+
+      // Mostrar vista seleccionada
+      document.getElementById('vista' + vista.charAt(0).toUpperCase() + vista.slice(1)).style.display = '';
+
+      // Actualizar nav links
+      document.querySelectorAll('#sidebar .nav-link').forEach(link => link.classList.remove('active'));
+      const navId = vista === 'activas' ? 'navActivas' : 'navHistorial';
+      document.getElementById(navId).classList.add('active');
+
+      vistaActual = vista;
+
+      // Cargar historial la primera vez
+      if (vista === 'historial' && !historialCargado) {
+        cargarHistorial(1);
+      }
+    }
+
+    // ========================================
+    // HISTORIAL DE REPARACIONES
+    // ========================================
+    async function cargarHistorial(pagina) {
+      pagina = pagina || 1;
+      historialPaginaActual = pagina;
+
+      const tbody = document.getElementById('historialTableBody');
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3 d-block"></i>Cargando historial...</td></tr>';
+
+      try {
+        const filtros = obtenerFiltrosHistorial();
+        filtros.finalizadas = true;
+
+        const resultado = await API.buscarReparaciones(filtros, pagina, 50);
+
+        if (resultado && resultado.exito) {
+          historialReparaciones = resultado.resultados || [];
+          historialTotalPaginas = resultado.totalPaginas || 1;
+          historialCargado = true;
+          renderizarTablaHistorial(historialReparaciones);
+          renderizarPaginacionHistorial(resultado);
+          document.getElementById('historialResultadosCount').textContent =
+            `${resultado.total || 0} resultado(s)`;
+
+          // Actualizar badge del sidebar
+          const badge = document.getElementById('badgeHistorial');
+          if (resultado.total > 0) {
+            badge.textContent = resultado.total;
+            badge.style.display = '';
+          }
+        } else {
+          tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">Error al cargar historial</td></tr>';
+        }
+      } catch (error) {
+        console.error('Error cargando historial:', error);
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-danger">Error: ' + error.message + '</td></tr>';
+      }
+    }
+
+    function obtenerFiltrosHistorial() {
+      const filtros = {};
+      const busqueda = document.getElementById('historialSearchInput').value.trim();
+      if (busqueda) filtros.busqueda = busqueda;
+
+      const fechaDesde = document.getElementById('historialFechaDesde').value;
+      if (fechaDesde) filtros.fechaDesde = fechaDesde;
+
+      const fechaHasta = document.getElementById('historialFechaHasta').value;
+      if (fechaHasta) filtros.fechaHasta = fechaHasta;
+
+      const estadoEntrega = document.getElementById('historialFilterEntrega').value;
+      if (estadoEntrega !== 'Todos') filtros.estadoRecogida = estadoEntrega;
+
+      return filtros;
+    }
+
+    function buscarHistorial() {
+      historialCargado = false;
+      cargarHistorial(1);
+    }
+
+    function limpiarFiltrosHistorial() {
+      document.getElementById('historialSearchInput').value = '';
+      document.getElementById('historialFechaDesde').value = '';
+      document.getElementById('historialFechaHasta').value = '';
+      document.getElementById('historialFilterEntrega').value = 'Todos';
+      buscarHistorial();
+    }
+
+    function renderizarTablaHistorial(reparaciones) {
+      const tbody = document.getElementById('historialTableBody');
+      if (!reparaciones || reparaciones.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>No se encontraron reparaciones finalizadas</td></tr>';
+        return;
+      }
+
+      let html = '';
+      reparaciones.forEach(rep => {
+        const badgeEstado = obtenerBadgeEstado(rep.estado);
+        const estadoEntrega = rep.estadoEntrega || 'PENDIENTE';
+        const badgeEntrega = obtenerBadgeEntrega(estadoEntrega);
+        const fechaEntrega = rep.fechaEntrega ? new Date(rep.fechaEntrega).toLocaleDateString('es-ES') : '-';
+        const resguardoSeguro = rep.resguardo || 'SIN-RESGUARDO';
+
+        html += `<tr>
+          <td><strong>${resguardoSeguro}</strong></td>
+          <td>${rep.cliente?.nombre || 'N/A'}<br><small class="text-muted">${rep.cliente?.telefono || ''}</small></td>
+          <td>${rep.equipo?.modelo || 'N/A'}</td>
+          <td>${badgeEstado}</td>
+          <td>${badgeEntrega}</td>
+          <td><small>${fechaEntrega}</small></td>
+          <td><small>${rep.tecnicoAsignado || '-'}</small></td>
+          <td><button class="btn btn-sm btn-outline-primary btn-ver-historial" data-resguardo="${resguardoSeguro}"><i class="fas fa-eye"></i> Ver</button></td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+
+      // Event listeners para botones Ver
+      document.querySelectorAll('.btn-ver-historial').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const resguardo = this.getAttribute('data-resguardo');
+          abrirModalDetalle(resguardo);
+        });
+      });
+    }
+
+    function obtenerBadgeEntrega(estado) {
+      const colores = {
+        'ENTREGADO': 'success',
+        'RECICLAJE': 'secondary',
+        'PENDIENTE': 'warning',
+        'ENVIO': 'info'
+      };
+      const iconos = {
+        'ENTREGADO': '✅',
+        'RECICLAJE': '♻️',
+        'PENDIENTE': '⏳',
+        'ENVIO': '📦'
+      };
+      const color = colores[estado] || 'secondary';
+      const icono = iconos[estado] || '';
+      return `<span class="badge bg-${color}">${icono} ${estado}</span>`;
+    }
+
+    function renderizarPaginacionHistorial(datos) {
+      const pagination = document.getElementById('historialPagination');
+      if (!datos || datos.totalPaginas <= 1) {
+        pagination.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      const pagActual = datos.pagina || 1;
+      const totalPag = datos.totalPaginas || 1;
+
+      // Anterior
+      html += `<li class="page-item ${pagActual === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="cargarHistorial(${pagActual - 1}); return false;">&laquo;</a></li>`;
+
+      // Páginas
+      const inicio = Math.max(1, pagActual - 2);
+      const fin = Math.min(totalPag, pagActual + 2);
+      for (let i = inicio; i <= fin; i++) {
+        html += `<li class="page-item ${i === pagActual ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="cargarHistorial(${i}); return false;">${i}</a></li>`;
+      }
+
+      // Siguiente
+      html += `<li class="page-item ${pagActual === totalPag ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="cargarHistorial(${pagActual + 1}); return false;">&raquo;</a></li>`;
+
+      pagination.innerHTML = html;
+    }
+
     /**
      * OBSOLETA - Ya no se usa la API, ahora todo es local con SSOT Pattern
      * Esta función solo re-aplica filtros si se llama accidentalmente
@@ -1755,7 +2177,7 @@
     function renderizarTablaReparaciones(reparaciones) {
       const tbody = document.getElementById('reparacionesTableBody');
       if (reparaciones.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-inbox"></i> No se encontraron reparaciones</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted"><i class="fas fa-inbox"></i> No se encontraron reparaciones</td></tr>';
         return;
       }
       let html = '';
@@ -1764,6 +2186,7 @@
         const diasEntrega = calcularDiasEntregaFrontend(rep);
         const pieza = rep.pedidos?.[0]?.estado ? `<span class="badge bg-warning">${rep.pedidos[0].estado}</span>` : '-';
         const badge = obtenerBadgeEstado(rep.estado);
+        const badgeSinEquipo = rep.equipoEnLocal === 'NO' ? ' <span class="badge bg-outline-warning text-warning border border-warning" style="font-size:0.65em;">Sin equipo</span>' : '';
         const resguardoSeguro = rep.resguardo || 'SIN-RESGUARDO';
 
         // Observaciones truncadas (máx 50 caracteres)
@@ -1771,11 +2194,13 @@
         const obsTruncado = obsTexto.length > 50 ? obsTexto.substring(0, 50) + '...' : obsTexto;
         const obsTitulo = obsTexto.replace(/"/g, '&quot;');
 
+        const fechaRecep = rep.fechaRecepcion ? formatearFecha(rep.fechaRecepcion) : '-';
         html += `<tr>
           <td><strong>${resguardoSeguro}</strong></td>
+          <td><small>${fechaRecep}</small></td>
           <td>${rep.cliente?.nombre || 'N/A'}<br><small class="text-muted">${rep.cliente?.telefono || 'N/A'}</small></td>
           <td>${rep.equipo?.modelo || 'N/A'}</td>
-          <td>${badge}</td>
+          <td>${badge}${badgeSinEquipo}</td>
           <td><small>${rep.tecnicoAsignado || '-'}</small></td>
           <td>${pieza}</td>
           <td><span class="${diasEntrega.clase}">${diasEntrega.texto}</span></td>
@@ -1946,10 +2371,12 @@
 
       const estado = document.getElementById('filterEstado').value;
       const tecnico = document.getElementById('filterTecnico').value;
+      const equipoLocal = document.getElementById('filterEquipoLocal').value;
 
       // Guardar filtros actuales
       filtrosActuales.estado = estado !== 'Todos' ? estado : null;
       filtrosActuales.tecnico = tecnico !== 'Todos' ? tecnico : null;
+      filtrosActuales.equipoLocal = equipoLocal !== 'Todos' ? equipoLocal : null;
       paginaActual = 1;
 
       // Aplicar todos los filtros
@@ -1973,6 +2400,12 @@
       if (filtrosActuales.tecnico) {
         reparacionesFiltradas = reparacionesFiltradas.filter(rep => rep.tecnicoAsignado === filtrosActuales.tecnico);
         console.log(`  Filtrado por técnico: ${filtrosActuales.tecnico}`);
+      }
+
+      // Filtro por equipo en local
+      if (filtrosActuales.equipoLocal) {
+        reparacionesFiltradas = reparacionesFiltradas.filter(rep => (rep.equipoEnLocal || 'SI') === filtrosActuales.equipoLocal);
+        console.log(`  Filtrado por equipo en local: ${filtrosActuales.equipoLocal}`);
       }
 
       // Filtro por búsqueda de texto
@@ -2092,6 +2525,9 @@
       document.getElementById('searchInput').value = '';
       document.getElementById('fechaDesde').value = '';
       document.getElementById('fechaHasta').value = '';
+      document.getElementById('filterEstado').value = 'Todos';
+      document.getElementById('filterTecnico').value = 'Todos';
+      document.getElementById('filterEquipoLocal').value = 'Todos';
       filtrosActuales = {};
       paginaActual = 1;
 
@@ -2205,6 +2641,7 @@
       try {
         // Obtener estado inicial seleccionado
         const estadoInicial = document.querySelector('input[name="estadoInicial"]:checked').value;
+        const tipoRecepcion = document.querySelector('input[name="tipoRecepcion"]:checked')?.value || 'LOCAL';
 
         const datos = {
           resguardo: document.getElementById('resguardo').value.trim(),
@@ -2214,7 +2651,8 @@
           clienteEmail: document.getElementById('clienteEmail').value.trim(),
           equipoModelo: document.getElementById('equipoModelo').value.trim(),
           sintoma: document.getElementById('sintoma').value.trim(),
-          estado: estadoInicial
+          estado: estadoInicial,
+          tipoRecepcion: tipoRecepcion
         };
 
         // Validar campos obligatorios
@@ -2756,7 +3194,7 @@
       html += '<div style="flex: 0.5; height: 2px; background: #dee2e6; margin: 0 10px;"></div>';
 
       // Fase 6: Entrega
-      const fase6Completada = rep.estadoEntrega === 'ENTREGADO';
+      const fase6Completada = rep.estadoEntrega === 'ENTREGADO' || rep.estadoEntrega === 'ENVIO' || rep.estadoEntrega === 'RECICLAJE';
 
       html += `<div class="text-center" style="flex: 1;">
         <div class="rounded-circle ${fase6Completada ? 'bg-success' : 'bg-secondary'} text-white d-inline-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
@@ -2947,22 +3385,40 @@
           `;
         }
       }
-      // FASE 4: Pieza Entregada -> Iniciar Reparación
+      // FASE 4: Pieza Entregada -> Iniciar Reparación (o esperar equipo)
       else if (estado === 'Pieza Entregada') {
-        html = `
-          <div class="card border-success">
-            <div class="card-body bg-success bg-opacity-10">
-              <h5 class="card-title text-success">
-                <i class="fas fa-check-circle"></i> Pieza Recibida - Listo para Reparar
-              </h5>
-              <p class="card-text">La pieza ha sido recibida. Asigne un técnico e inicie la reparación.</p>
-              <hr>
-              <button class="btn btn-success" onclick="abrirModalIniciarReparacion()">
-                <i class="fas fa-tools"></i> Iniciar Reparación
-              </button>
+        const equipoEnLocal = rep.equipoEnLocal || 'SI';
+        if (equipoEnLocal === 'NO') {
+          html = `
+            <div class="card border-warning">
+              <div class="card-body bg-warning bg-opacity-10">
+                <h5 class="card-title text-warning">
+                  <i class="fas fa-box-open"></i> Pieza Recibida - Esperando Equipo del Cliente
+                </h5>
+                <p class="card-text">La pieza ha llegado pero el cliente se llevó el equipo. Contactar al cliente para que traiga el equipo al local.</p>
+                <hr>
+                <button class="btn btn-warning" onclick="marcarEquipoRecibido()">
+                  <i class="fas fa-store"></i> Marcar Equipo Recibido
+                </button>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        } else {
+          html = `
+            <div class="card border-success">
+              <div class="card-body bg-success bg-opacity-10">
+                <h5 class="card-title text-success">
+                  <i class="fas fa-check-circle"></i> Pieza Recibida - Listo para Reparar
+                </h5>
+                <p class="card-text">La pieza ha sido recibida. Asigne un técnico e inicie la reparación.</p>
+                <hr>
+                <button class="btn btn-success" onclick="abrirModalIniciarReparacion()">
+                  <i class="fas fa-tools"></i> Iniciar Reparación
+                </button>
+              </div>
+            </div>
+          `;
+        }
       }
       // FASE 5: En Reparación -> Finalizar
       else if (estado === 'En Reparación') {
@@ -3006,9 +3462,12 @@
                 </h5>
                 <p class="card-text">El equipo está ${mensaje}. Esperando que el cliente recoja.</p>
                 <hr>
-                <div class="d-flex gap-2">
-                  <button class="btn btn-success" onclick="abrirModalEntregarEquipo()">
-                    <i class="fas fa-hand-holding"></i> Marcar como Entregado
+                <div class="d-flex gap-2 flex-wrap">
+                  <button class="btn btn-success" onclick="abrirModalEntregarEquipo('ENTREGADO')">
+                    <i class="fas fa-hand-holding"></i> Entregado en Local
+                  </button>
+                  <button class="btn btn-info text-white" onclick="abrirModalEntregarEquipo('ENVIO')">
+                    <i class="fas fa-shipping-fast"></i> Envío Mensajería
                   </button>
                   ${estado === 'No tiene Reparación' || estado === 'Presupuesto Rechazado' ? `
                   <button class="btn btn-secondary" onclick="enviarAPuntoLimpio()">
@@ -3018,11 +3477,13 @@
               </div>
             </div>
           `;
-        } else if (estadoRecogida === 'ENTREGADO' || estadoRecogida === 'RECICLAJE') {
-          const mensajeCierre = estadoRecogida === 'RECICLAJE'
+        } else if (estadoEntrega === 'ENTREGADO' || estadoEntrega === 'RECICLAJE' || estadoEntrega === 'ENVIO') {
+          const mensajeCierre = estadoEntrega === 'RECICLAJE'
             ? 'El equipo fue enviado a punto limpio (reciclaje). Este caso ha finalizado.'
-            : 'El equipo fue entregado al cliente. Este caso ha finalizado.';
-          const iconoCierre = estadoRecogida === 'RECICLAJE' ? 'fa-recycle' : 'fa-check-double';
+            : estadoEntrega === 'ENVIO'
+            ? 'El equipo fue enviado al cliente por mensajería. Este caso ha finalizado.'
+            : 'El equipo fue entregado al cliente en local. Este caso ha finalizado.';
+          const iconoCierre = estadoEntrega === 'RECICLAJE' ? 'fa-recycle' : estadoEntrega === 'ENVIO' ? 'fa-shipping-fast' : 'fa-check-double';
           html = `
             <div class="card border-success">
               <div class="card-body">
@@ -3654,16 +4115,27 @@
 
       const ppto = reparacionActual.presupuestos?.find(p => p.presupuestoId === presupuestoId);
       const versionLabel = ppto ? `v${ppto.version}` : presupuestoId;
+      const tipoPieza = ppto?.tipoPieza || 'no';
 
-      const confirmado = await mostrarConfirmacion(`¿El cliente aceptó el presupuesto ${versionLabel}?`);
-      if (!confirmado) return;
+      let equipoEnLocal = true;
+
+      if (tipoPieza === 'pedido') {
+        // Mostrar confirmación con radio buttons para equipo
+        const resultado = await mostrarConfirmacionEquipo(versionLabel);
+        if (!resultado) return; // Canceló
+        equipoEnLocal = resultado.equipoEnLocal;
+      } else {
+        const confirmado = await mostrarConfirmacion(`¿El cliente aceptó el presupuesto ${versionLabel}?`);
+        if (!confirmado) return;
+      }
 
       try {
         modalGestionPresupuestos.hide();
         modalDetalle.hide();
         const toast = mostrarGuardando('Aceptando presupuesto...');
 
-        const resultado = await API.aceptarPresupuesto(presupuestoId);
+        const opciones = { equipoEnLocal: equipoEnLocal };
+        const resultado = await API.aceptarPresupuesto(presupuestoId, opciones);
 
         if (resultado && resultado.exito) {
           toast.exito(resultado.mensaje || 'Presupuesto aceptado');
@@ -3681,7 +4153,8 @@
           const reparacionActualizada = {
             ...reparacionActual,
             estado: 'Presupuesto Aceptado',
-            presupuestoAceptadoId: presupuestoId
+            presupuestoAceptadoId: presupuestoId,
+            equipoEnLocal: equipoEnLocal ? 'SI' : 'NO'
           };
 
           await actualizarDatosSinRecargar(reparacionActualizada);
@@ -3693,6 +4166,58 @@
         console.error('Error:', error);
         mostrarError('Error al aceptar presupuesto: ' + error.message);
       }
+    }
+
+    function mostrarConfirmacionEquipo(versionLabel) {
+      return new Promise((resolve) => {
+        const modalElement = document.getElementById('modalConfirmacion');
+        const modal = new bootstrap.Modal(modalElement);
+        const mensajeElement = document.getElementById('modalConfirmacionMensaje');
+        const botonAceptar = document.getElementById('modalConfirmacionAceptar');
+
+        mensajeElement.innerHTML = `
+          <p>¿El cliente aceptó el presupuesto ${versionLabel}?</p>
+          <hr>
+          <p class="fw-bold mb-2">Este presupuesto requiere pieza por pedido. ¿El cliente deja el equipo?</p>
+          <div class="d-flex flex-column gap-2">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="equipoEnLocalConfirm" id="equipoDejaLocal" value="SI" checked>
+              <label class="form-check-label" for="equipoDejaLocal">
+                <i class="fas fa-store text-success"></i> Cliente deja el equipo en local
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="equipoEnLocalConfirm" id="equipoSeLleva" value="NO">
+              <label class="form-check-label" for="equipoSeLleva">
+                <i class="fas fa-walking text-warning"></i> Cliente se lleva el equipo
+              </label>
+            </div>
+          </div>
+        `;
+
+        const handleAceptar = () => {
+          const seleccion = document.querySelector('input[name="equipoEnLocalConfirm"]:checked');
+          const equipoEnLocal = seleccion ? seleccion.value === 'SI' : true;
+          modal.hide();
+          resolve({ equipoEnLocal });
+          cleanup();
+        };
+
+        const handleCancelar = () => {
+          resolve(null);
+          cleanup();
+        };
+
+        const cleanup = () => {
+          botonAceptar.removeEventListener('click', handleAceptar);
+          modalElement.removeEventListener('hidden.bs.modal', handleCancelar);
+        };
+
+        botonAceptar.addEventListener('click', handleAceptar);
+        modalElement.addEventListener('hidden.bs.modal', handleCancelar);
+
+        modal.show();
+      });
     }
 
     async function rechazarPresupuestoEspecifico(presupuestoId) {
@@ -3904,6 +4429,10 @@
       contadorPiezas = 0;
       piezasDelPresupuesto = [];
 
+      // Obtener piezas del presupuesto para buscar proveedor por piezaId
+      const pptoAceptadoEdit = reparacionActual.presupuestos?.find(p => p.estado === 'aceptado') || reparacionActual.presupuestos?.[0];
+      const piezasPptoEdit = pptoAceptadoEdit?.piezas || [];
+
       // Cargar piezas desde los pedidos existentes (cada pedido = una pieza)
       if (pedidosActivos.length > 0) {
         pedidosActivos.forEach(pedido => {
@@ -3911,9 +4440,12 @@
           if (pedido.fechaEstimada) {
             try { fechaEst = new Date(pedido.fechaEstimada).toISOString().split('T')[0]; } catch(e) {}
           }
+          // Buscar proveedor desde la pieza del presupuesto
+          const piezaPpto = piezasPptoEdit.find(p => String(p.piezaId) === String(pedido.piezaId));
+          const proveedorId = piezaPpto?.proveedorId || '';
           agregarPiezaParaEdicion(
-            pedido.compradoPor || '',
-            '',
+            proveedorId,
+            piezaPpto?.enlace || '',
             pedido.notas || '',
             pedido.numeroPedido || '',
             fechaEst
@@ -3921,13 +4453,10 @@
         });
       } else {
         // Fallback: cargar piezas del presupuesto aceptado
-        const pptoAceptado = reparacionActual.presupuestos?.find(p => p.estado === 'aceptado') || reparacionActual.presupuestos?.[0];
-        const piezasPpto = pptoAceptado?.piezas || [];
-
-        if (piezasPpto.length > 0) {
-          piezasPpto.forEach(pieza => {
+        if (piezasPptoEdit.length > 0) {
+          piezasPptoEdit.forEach(pieza => {
             agregarPiezaParaEdicion(
-              obtenerNombreProveedor(pieza.proveedorId) || '',
+              pieza.proveedorId || '',
               pieza.enlace || '',
               pieza.descripcion || '',
               '',
@@ -3943,6 +4472,22 @@
         modalRegistrarPedido = new bootstrap.Modal(document.getElementById('modalRegistrarPedido'));
       }
       modalRegistrarPedido.show();
+    }
+
+    function generarSelectProveedor(contadorPieza, proveedorIdSeleccionado, soloLectura) {
+      try {
+        const proveedores = typeof window._PROVEEDORES === 'string' ? JSON.parse(window._PROVEEDORES) : (window._PROVEEDORES || []);
+        let options = '<option value="">Seleccionar proveedor...</option>';
+        proveedores.forEach(p => {
+          const selected = (String(p.id) === String(proveedorIdSeleccionado) || String(p.nombre) === String(proveedorIdSeleccionado)) ? 'selected' : '';
+          options += `<option value="${p.id}" ${selected}>${p.nombre}</option>`;
+        });
+        const disabled = soloLectura ? 'disabled' : '';
+        const bgStyle = soloLectura ? 'style="background-color: #e9ecef;"' : '';
+        return `<select class="form-select proveedor-input" data-pieza="${contadorPieza}" ${disabled} ${bgStyle}>${options}</select>`;
+      } catch(e) {
+        return `<input type="text" class="form-control proveedor-input" data-pieza="${contadorPieza}" value="${proveedorIdSeleccionado || ''}">`;
+      }
     }
 
     /**
@@ -3981,7 +4526,7 @@
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Proveedor *</label>
-                <input type="text" class="form-control proveedor-input" data-pieza="${contadorPiezas}" value="${proveedor}">
+                ${generarSelectProveedor(contadorPiezas, proveedor, false)}
               </div>
               <div class="col-md-6">
                 <label class="form-label">Enlace de Compra</label>
@@ -4031,7 +4576,7 @@
             <div class="row mb-3">
               <div class="col-md-6">
                 <label class="form-label">Proveedor ${soloLectura ? '<span class="badge bg-secondary">Del presupuesto</span>' : '*'}</label>
-                <input type="text" class="form-control proveedor-input" data-pieza="${contadorPiezas}" value="${proveedor}" ${soloLectura ? 'readonly style="background-color: #e9ecef;"' : ''}>
+                ${generarSelectProveedor(contadorPiezas, proveedor, soloLectura)}
               </div>
               <div class="col-md-6">
                 <label class="form-label">Enlace de Compra ${soloLectura ? '<span class="badge bg-secondary">Del presupuesto</span>' : ''}</label>
@@ -4675,28 +5220,42 @@
 
     let modalEntregarEquipo;
 
-    function abrirModalEntregarEquipo() {
+    function abrirModalEntregarEquipo(tipoEntrega) {
       if (!reparacionActual) {
         mostrarError('No hay reparación seleccionada');
         return;
       }
 
+      const esEnvio = tipoEntrega === 'ENVIO';
       const hoy = new Date().toISOString().split('T')[0];
 
       document.getElementById('entregarResguardo').value = reparacionActual.resguardo;
+      document.getElementById('entregarTipoEntrega').value = tipoEntrega || 'ENTREGADO';
       document.getElementById('entregarFecha').value = hoy;
-      document.getElementById('entregarFecha').max = hoy; // No permitir fechas futuras
+      document.getElementById('entregarFecha').max = hoy;
       document.getElementById('entregarFactura').value = '';
       document.getElementById('entregarObservaciones').value = '';
 
+      // Ajustar título y botón según tipo
+      const modalEl = document.getElementById('modalEntregarEquipo');
+      modalEl.querySelector('.modal-title').innerHTML = esEnvio
+        ? '<i class="fas fa-shipping-fast"></i> Envío por Mensajería'
+        : '<i class="fas fa-box-open"></i> Entregar Equipo';
+      modalEl.querySelector('.modal-footer .btn-primary').innerHTML = esEnvio
+        ? '<i class="fas fa-shipping-fast"></i> Registrar Envío'
+        : '<i class="fas fa-check"></i> Marcar como Entregado';
+
       if (!modalEntregarEquipo) {
-        modalEntregarEquipo = new bootstrap.Modal(document.getElementById('modalEntregarEquipo'));
+        modalEntregarEquipo = new bootstrap.Modal(modalEl);
       }
       modalEntregarEquipo.show();
     }
 
     async function guardarEntregarEquipo() {
+      const tipoEntrega = document.getElementById('entregarTipoEntrega').value || 'ENTREGADO';
+      const esEnvio = tipoEntrega === 'ENVIO';
       const datos = {
+        tipoEntrega: tipoEntrega,
         numeroFactura: document.getElementById('entregarFactura').value.trim(),
         fechaRecogida: document.getElementById('entregarFecha').value,
         observaciones: document.getElementById('entregarObservaciones').value.trim()
@@ -4718,14 +5277,16 @@
       const resguardoActual = reparacionActual.resguardo;
       modalEntregarEquipo.hide();
       modalDetalle.hide();
-      const toast = mostrarGuardando('Registrando entrega...');
+      const toast = mostrarGuardando(esEnvio ? 'Registrando envío por mensajería...' : 'Registrando entrega...');
 
       try {
         const resguardo = document.getElementById('entregarResguardo').value;
         const resultado = await API.marcarComoEntregado(resguardo, datos);
 
         if (resultado && resultado.exito) {
-          toast.exito(`Equipo entregado (${resultado.diasTotales} días)`);
+          toast.exito(esEnvio
+            ? `Equipo enviado por mensajería (${resultado.diasTotales} días)`
+            : `Equipo entregado (${resultado.diasTotales} días)`);
 
           // Remover reparación de ambos arrays (ya está entregada)
           todasLasReparaciones = todasLasReparaciones.filter(r => r.resguardo !== resguardoActual);
@@ -4737,6 +5298,9 @@
 
           // Actualizar contador
           document.getElementById('resultadosCount').textContent = reparacionesActuales.length;
+
+          // Invalidar historial para que se recargue al navegar
+          historialCargado = false;
 
           console.log('✅ Reparación entregada removida del cache local');
         } else {
@@ -4771,12 +5335,51 @@
           renderizarTablaReparaciones(reparacionesActuales);
           recalcularMetricas();
           document.getElementById('resultadosCount').textContent = reparacionesActuales.length;
+
+          // Invalidar historial para que se recargue al navegar
+          historialCargado = false;
         } else {
           toast.error(resultado?.error || 'Error al enviar a punto limpio');
         }
       } catch (error) {
         console.error('Error:', error);
         toast.error('Error al enviar a punto limpio: ' + error.message);
+      }
+    }
+
+
+    async function marcarEquipoRecibido() {
+      if (!reparacionActual) return;
+
+      const confirmado = await mostrarConfirmacion('¿El cliente trajo el equipo al local?');
+      if (!confirmado) return;
+
+      const resguardoActual = reparacionActual.resguardo;
+      modalDetalle.hide();
+      const toast = mostrarGuardando('Registrando recepción del equipo...');
+
+      try {
+        const resultado = await API.marcarEquipoRecibido(resguardoActual);
+
+        if (resultado && resultado.exito) {
+          toast.exito('Equipo recibido en local');
+
+          // Actualizar local
+          reparacionActual.equipoEnLocal = 'SI';
+          const repEnArray = todasLasReparaciones.find(r => r.resguardo === resguardoActual);
+          if (repEnArray) repEnArray.equipoEnLocal = 'SI';
+          const repEnActuales = reparacionesActuales.find(r => r.resguardo === resguardoActual);
+          if (repEnActuales) repEnActuales.equipoEnLocal = 'SI';
+
+          // Re-renderizar tabla y re-abrir modal
+          renderizarTablaReparaciones(reparacionesActuales);
+          abrirModalDetalle(resguardoActual);
+        } else {
+          toast.error(resultado?.error || 'Error al registrar recepción del equipo');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error('Error al registrar recepción: ' + error.message);
       }
     }
 
