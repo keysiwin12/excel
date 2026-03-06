@@ -1,6 +1,6 @@
 /**
- * CONFIGURACIÓN GENERAL DEL SISTEMA - KELATOS MVP
- * Sistema de Gestión de Reparaciones
+ * CONFIGURACIÓN GENERAL DEL SISTEMA - KELATOS v2
+ * Sistema de Gestión de Reparaciones - Estructura Multi-Tabla
  */
 
 // ============================================
@@ -14,309 +14,318 @@ const KELATOS = {
   email: "soporte@kelatos.com",
   logo: "https://kelatos.com/wp-content/uploads/2021/12/logo_web_kelatos.png",
   web: "https://kelatos.com",
+  PRECIO_REVISION: 20,
 
-  // Colores corporativos
   colores: {
-    primario: "#1768ea",      // Azul vibrante
-    secundario: "#3633e1",    // Azul oscuro
-    texto: "#373a3c",         // Gris oscuro
-    fondo: "#ffffff",         // Blanco
-    exito: "#28a745",         // Verde
-    advertencia: "#ffc107",   // Amarillo
-    peligro: "#dc3545",       // Rojo
-    info: "#17a2b8"           // Cyan
+    primario: "#1768ea",
+    secundario: "#3633e1",
+    texto: "#373a3c",
+    fondo: "#ffffff",
+    exito: "#28a745",
+    advertencia: "#ffc107",
+    peligro: "#dc3545",
+    info: "#17a2b8"
   }
 };
 
 // ============================================
-// CONFIGURACIÓN DEL SHEET
+// CONFIGURACIÓN DE HOJAS (MULTI-TABLA)
 // ============================================
-const SHEET_CONFIG = {
-  spreadsheetId: "1yb0tqFy1p_krwiIX0fvuczsBoJXlxGz08UWAVTek6mU",
-  nombre: "Consolidado",
+const DB_ID = "1MmAZeCgSdmbRpXm2DeWEMLSWej1H08S6lBjDLgaYe4A";
 
-  // Índices de columnas (0-based) - Basados en logs reales
-  columnas: {
-    resguardo: 0,                    // A - "Resguardo de Recepcion"
-    fecha: 1,                        // B - "Fecha"
-    fechaResponsablePpto: 2,         // C - "Responsable de presupuesto"
-    fechaElaboracionPpto: 3,         // D - "Fecha de Elaboración de Presupuesto"
-    tecnico: 4,                      // E - "Técnico que ha reparado el equipo"
-    fechaReparacion: 5,              // F - "Fecha de Reparación"
-    nombreCliente: 6,                // G - "Nombre de Cliente"
-    telefono: 7,                     // H - "Telefono"
-    email: 8,                        // I - "Correo electrónico"
-    modeloMarcaEquipo: 9,            // J - "Modelo/Marca Equipo"
-    sintoma: 10,                     // K - "Síntoma / Reparación"
-    estado: 11,                      // L - "Estado"
-    tiempoEntregaDias: 12,           // M - "TIEMPO (DÍAS) DE ENTREGA DE EQUIPO"
-    costoReparacionSinIVA: 13,       // N - "Costo de Reparación sin IVA"
-    costoPieza: 14,                  // O - "COSTO DE PIEZA"
-    gananciaNeta: 15,                // P - "Ganancia Neta"
-    responsableCompra: 16,           // Q - "Responsable de Compra"
-    proveedor: 17,                   // R - "PROVEEDOR"
-    enlaceCompra: 18,                // S - "ENLACES DE COMPRA"
-    numeroPedido: 19,                // T - "NÚMERO DE PEDIDO DE COMPRA"
-    fechaPedido: 20,                 // U - "FECHA DE PEDIDO"
-    estadoPedido: 21,                // V - "Estado de Pedido"
-    avisoWhatsappEstado: 22,         // W - "Aviso Wasap Estado"
-    fechaLimitePpto: 23,             // X - "Fecha Límite Presupuesto"
-    alertaPptoEnviada: 24,           // Y - "Alerta envío de presupuesto"
-    motivoRechazo: 25,               // Z - "Motivo Rechazo de Presupuesto"
-    fechaAceptacionPpto: 26,         // AA - "FECHA ACEPTACION DE PRESUPUESTO"
-    fechaEntrega: 27,                // AB - "FECHA DE ENTREGA" (pieza)
-    contactarProveedor: 28,          // AC - "CONTACTAR PROVEEDOR"
-    fechaContacto1: 29,              // AD - "FECHA CONTACTO 1"
-    recordatorioP1: 30,              // AE - "RECORDATORIO P1"
-    numeroFactura: 31,               // AF - "NÚMERO DE FACTURA"
-    fechaRecogida: 32,               // AG - "FECHA DE RECOGIDA POR EL CLIENTE"
-    estadoRecogida: 33,              // AH - "ESTADO DE RECOGIDA"
-    fichaMarca: 34,                  // AI - "FICHA /MARCA"
-    colocoResena: 35,                // AJ - "Colocó Reseña"
-    observaciones: 36,               // AK - "OBSERVACIONES"
-    envioEncuesta: 37,               // AL - "Envío de Encuesta"
-    envioEnlaceResena: 38,           // AM - "Envío de enlace para reseña"
-    ingresoResena: 39,               // AN - "Ingresó Reseña?"
-    obsEntregaEquipos: 40,           // AO - "Obs (Entrega de Equipos)"
-    vacio: 41,                       // AP - "" (columna vacía)
-    fechaUltimoRecordatorio: 42,     // AQ - "Fecha Último Recordatorio"
-    tipoUltimoRecordatorio: 43,      // AR - "Tipo Último Recordatorio"
-    contadorRecojosEnviados: 44      // AS - "Contador Recordatorios Recojo"
+const HOJAS = {
+  empleados: {
+    nombre: "Empleados",
+    cols: {
+      empleado_id: 0,
+      nombre: 1,
+      email: 2,
+      rol: 3,
+      es_tecnico: 4,
+      es_comprador: 5,
+      activo: 6
+    }
+  },
+
+  proveedores: {
+    nombre: "Provedores",
+    cols: {
+      provedor_id: 0,
+      nombre: 1,
+      notas: 2,
+      activo: 3
+    }
+  },
+
+  reparaciones: {
+    nombre: "Reparaciones",
+    cols: {
+      resguardo: 0,
+      fecha_recepcion: 1,
+      cliente_nombre: 2,
+      cliente_telefono: 3,
+      cliente_email: 4,
+      equipo_modelo: 5,
+      sintoma: 6,
+      estado: 7,
+      presupuesto_aceptado_id: 8,
+      tecnico_asignado: 9,
+      fecha_reparacion: 10,
+      resultado_reparacion: 11,
+      numero_factura: 12,
+      fecha_entrega: 13,
+      estado_entrega: 14,
+      observaciones: 15,
+      creado_por: 16,
+      fecha_creacion: 17,
+      tipo_recepcion: 18,
+      equipo_en_local: 19,
+      entrega_mensajeria: 20,
+      direccion_envio: 21,
+      // Nueva columna JSON para cintas (optimizada)
+      datos_cintas: 22,
+      motivo_sin_reparacion: 23,
+      tipo_ingreso: 24,
+      ultimo_usuario: 25,
+      presupuestos_modo: 26,
+      revision_pagada: 27
+    }
+  },
+
+  presupuestos: {
+    nombre: "Presupuestos",
+    cols: {
+      presupuesto_id: 0,
+      resguardo: 1,
+      version: 2,
+      fecha_elaboracion: 3,
+      elaborado_por: 4,
+      costo_reparacion: 5,
+      costo_piezas: 6,
+      total: 7,
+      ganancia_neta: 8,
+      dias_entrega: 9,
+      estado: 10,
+      fecha_envio: 11,
+      fecha_respuesta: 12,
+      motivo_rechazo: 13,
+      notas: 14,
+      tipo_pieza: 15,
+      descripcion: 16,
+      mano_obra: 17,
+      precio_piezas: 18
+    }
+  },
+
+  piezas: {
+    nombre: "Piezas_Presupuesto",
+    cols: {
+      pieza_id: 0,
+      presupuesto_id: 1,
+      proveedor_id: 2,
+      descripcion: 3,
+      costo: 4,
+      enlace: 5,
+      notas: 6,
+      precio: 7
+    }
+  },
+
+  pedidos: {
+    nombre: "PEDIDOS",
+    cols: {
+      pedido_id: 0,
+      pieza_id: 1,
+      resguardo: 2,
+      comprado_por: 3,
+      numero_pedido: 4,
+      fecha_pedido: 5,
+      fecha_estimada: 6,
+      fecha_recepcion: 7,
+      estado: 8,
+      recibido_por: 9,
+      problema_tipo: 10,
+      codigo_devolucion: 11,
+      pedido_remplazo_id: 12,
+      notas: 13,
+      fecha_devolucion: 14,
+      enlace: 15
+    }
+  },
+
+  historial: {
+    nombre: "Historial",
+    cols: {
+      evento_id: 0,
+      resguardo: 1,
+      fecha_hora: 2,
+      empleado_id: 3,
+      tipo: 4,
+      descripcion: 5,
+      datos_extra: 6
+    }
+  },
+
+  notificaciones: {
+    nombre: "Notificaciones",
+    cols: {
+      notif_id: 0,
+      resguardo: 1,
+      presupuesto_id: 2,
+      tipo: 3,
+      canal: 4,
+      destinatario: 5,
+      // col 6 reservada (mensaje — en desuso)
+      estado: 7,
+      fecha_programada: 8,
+      fecha_envio: 9,
+      error: 10,
+      numero_secuencia: 11,
+      intentos: 12,
+      id_externo: 13,
+      datos_extra: 14
+    }
   }
 };
 
 // ============================================
 // ESTADOS DE REPARACIÓN
-// Flujo: Recepción -> Presupuesto -> Respuesta -> Pieza (opcional) -> Reparación -> Entrega
 // ============================================
 const ESTADOS_REPARACION = {
-  // Fase 1: Recepción inicial
   "Presupuesto Pendiente": {
-    color: "#17a2b8",
-    icono: "📝",
-    descripcion: "Pendiente de elaborar presupuesto (24h)",
-    fase: 1
+    color: "#17a2b8", icono: "📝",
+    descripcion: "Pendiente de elaborar presupuesto (24h)", fase: 1
   },
   "Garantía": {
-    color: "#6f42c1",
-    icono: "🛡️",
-    descripcion: "Equipo en garantía",
-    fase: 1
+    color: "#6f42c1", icono: "🛡️",
+    descripcion: "Equipo en garantía", fase: 1
   },
-
-  // Fase 2: Presupuesto elaborado
   "Presupuesto Enviado": {
-    color: "#6c757d",
-    icono: "⏳",
-    descripcion: "Esperando respuesta del cliente",
-    fase: 2
+    color: "#6c757d", icono: "⏳",
+    descripcion: "Esperando respuesta del cliente", fase: 2
   },
-
-  // Fase 3: Respuesta del cliente
   "Presupuesto Aceptado": {
-    color: "#28a745",
-    icono: "✅",
-    descripcion: "Cliente aceptó, proceder con reparación",
-    fase: 3
+    color: "#20c997", icono: "✅",
+    descripcion: "Presupuesto aceptado, pendiente de registrar pedido de pieza", fase: 3
   },
   "Presupuesto Rechazado": {
-    color: "#dc3545",
-    icono: "❌",
-    descripcion: "Cliente rechazó, listo para recoger",
-    fase: 3
+    color: "#dc3545", icono: "❌",
+    descripcion: "Cliente rechazó, listo para recoger", fase: 3
   },
-
-  // Fase 4: Pedido de pieza (si aplica)
   "Pieza Pendiente": {
-    color: "#fd7e14",
-    icono: "📦",
-    descripcion: "Pieza pedida, esperando llegada",
-    fase: 4
+    color: "#fd7e14", icono: "📦",
+    descripcion: "Pieza pedida, esperando llegada", fase: 4
+  },
+  "En Tránsito": {
+    color: "#ffc107", icono: "🚚",
+    descripcion: "Pieza en camino", fase: 4
   },
   "Pieza Entregada": {
-    color: "#20c997",
-    icono: "✓📦",
-    descripcion: "Pieza recibida, listo para reparar",
-    fase: 4
+    color: "#20c997", icono: "✓📦",
+    descripcion: "Pieza recibida, listo para reparar", fase: 4
   },
-
-  // Fase 5: Reparación
   "En Reparación": {
-    color: "#007bff",
-    icono: "🔧",
-    descripcion: "Técnico trabajando en la reparación",
-    fase: 5
+    color: "#007bff", icono: "🔧",
+    descripcion: "Técnico trabajando en la reparación", fase: 5
   },
   "Reparado": {
-    color: "#28a745",
-    icono: "✅",
-    descripcion: "Reparación completada, listo para recoger",
-    fase: 5
+    color: "#28a745", icono: "✅",
+    descripcion: "Reparación completada, listo para recoger", fase: 5
   },
   "No tiene Reparación": {
-    color: "#6c757d",
-    icono: "⚠️",
-    descripcion: "No se pudo reparar, listo para recoger",
-    fase: 5
+    color: "#6c757d", icono: "⚠️",
+    descripcion: "No se pudo reparar, listo para recoger", fase: 5
   }
 };
 
 // ============================================
-// ESTADOS DE PEDIDO DE PIEZA
+// ESTADOS DE PEDIDO
 // ============================================
 const ESTADOS_PEDIDO = {
-  "": {
-    color: "#e9ecef",
-    icono: "",
-    descripcion: "Sin pedido"
-  },
-  "Pendiente": {
-    color: "#6c757d",
-    icono: "⏳",
-    descripcion: "Aún no se ha pedido"
-  },
-  "Pedido": {
-    color: "#17a2b8",
-    icono: "📦",
-    descripcion: "Pedido realizado al proveedor"
-  },
-  "En Tránsito": {
-    color: "#ffc107",
-    icono: "🚚",
-    descripcion: "Enviado, esperando recepción"
-  },
-  "Recibido": {
-    color: "#28a745",
-    icono: "✅",
-    descripcion: "Pieza recibida, listo para reparar"
-  },
-  "Cancelado": {
-    color: "#dc3545",
-    icono: "❌",
-    descripcion: "Pedido cancelado"
-  }
+  "Pendiente": { color: "#6c757d", icono: "⏳", descripcion: "Aún no se ha pedido" },
+  "Pedido": { color: "#17a2b8", icono: "📦", descripcion: "Pedido realizado" },
+  "En Tránsito": { color: "#ffc107", icono: "🚚", descripcion: "En camino" },
+  "Recibido": { color: "#28a745", icono: "✅", descripcion: "Pieza recibida" },
+  "Cancelado": { color: "#dc3545", icono: "❌", descripcion: "Pedido cancelado" },
+  "Problema": { color: "#dc3545", icono: "⚠️", descripcion: "Problema con la pieza" },
+  "Pieza Rota": { color: "#dc3545", icono: "🔨", descripcion: "Pieza rota durante reparación" },
+  "Pieza Defectuosa": { color: "#fd7e14", icono: "⚠️", descripcion: "Pieza defectuosa de fábrica" }
 };
 
 // ============================================
 // ESTADOS DE RECOGIDA
 // ============================================
 const ESTADOS_RECOGIDA = {
-  "PENDIENTE": {
-    color: "#ffc107",
-    icono: "⏳",
-    descripcion: "Esperando que cliente recoja"
-  },
-  "ENTREGADO": {
-    color: "#28a745",
-    icono: "✅",
-    descripcion: "Entregado al cliente"
-  },
-  "ENVIO": {
-    color: "#17a2b8",
-    icono: "📦",
-    descripcion: "Enviado por mensajería"
-  },
-  "RECICLAJE": {
-    color: "#6c757d",
-    icono: "♻️",
-    descripcion: "Equipo desechado"
-  },
-  "REVISAR MOVIL": {
-    color: "#fd7e14",
-    icono: "📱",
-    descripcion: "Revisar móvil"
-  }
+  "PENDIENTE": { color: "#ffc107", icono: "⏳", descripcion: "Esperando que cliente recoja" },
+  "ENTREGADO": { color: "#28a745", icono: "✅", descripcion: "Entregado al cliente" },
+  "ENVIO": { color: "#17a2b8", icono: "📦", descripcion: "Enviado por mensajería" },
+  "RECICLAJE": { color: "#6c757d", icono: "♻️", descripcion: "Equipo desechado" }
 };
 
 // ============================================
-// TÉCNICOS
+// ESTADOS DE PRESUPUESTO
 // ============================================
-const TECNICOS = [
-  "Ivan",
-  "Romer",
-  "Enque",
-  "Nelson",
-  "Moviles/disco",
-  "Repuesto"
-];
+const ESTADOS_PRESUPUESTO = {
+  "borrador":  { color: "#6c757d", descripcion: "En elaboración" },
+  "enviado":   { color: "#17a2b8", descripcion: "Enviado al cliente" },
+  "aceptado":  { color: "#28a745", descripcion: "Aceptado por el cliente" },
+  "rechazado": { color: "#dc3545", descripcion: "Rechazado por el cliente" },
+  "anulado":   { color: "#6c757d", descripcion: "Anulado después de ser aceptado" }
+};
 
 // ============================================
 // MARCAS DE EQUIPOS
 // ============================================
 const MARCAS_EQUIPOS = [
-  "LenovoTech",
-  "MsiTech",
-  "DellTech",
-  "DysonTech",
-  "Tech4you HP",
-  "SurfaceLabs",
-  "AppleTech",
-  "Don Cargador",
-  "ThermomixTech",
-  "Alquiler de Ordenadores",
-  "Kelatos",
-  "AcerTech",
-  "PC4you",
-  "ConvertVideo",
-  "Dr. Recovery Data",
-  "disco duro externo",
-  "AsusTech"
+  "LenovoTech", "MsiTech", "DellTech", "DysonTech", "Tech4you HP",
+  "SurfaceLabs", "AppleTech", "Don Cargador", "ThermomixTech",
+  "Alquiler de Ordenadores", "Kelatos", "AcerTech", "PC4you",
+  "ConvertVideo", "Dr. Recovery Data", "disco duro externo", "AsusTech"
 ];
 
 // ============================================
-// PROVEEDORES
-// ============================================
-const PROVEEDORES = [
-  "TechParts España",
-  "Amazon",
-  "AliExpress",
-  "PCComponentes",
-  "Otro"
-];
-
-// ============================================
-// CREDENCIALES NETELIP (SMS) - Mantener de tu config actual
+// NETELIP (SMS) — token en Project Properties
+// Guardar con: configurarTokenNetelip()
 // ============================================
 const NETELIP = {
-  token: "144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac",
+  get token() { return PropertiesService.getScriptProperties().getProperty('NETELIP_TOKEN') || ''; },
   from: "Kelatos",
   apiUrl: "https://api.netelip.com/v1/sms/api.php"
 };
 
+/**
+ * Guardar el token Netelip en las propiedades del proyecto.
+ * Ejecutar UNA VEZ desde el editor de GAS tras rotar el token.
+ * El token NUNCA debe estar en el código fuente.
+ */
+function configurarTokenNetelip() {
+  const token = '144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac';
+  if (token === '144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac') {
+    throw new Error('Reemplaza el valor de la variable token antes de ejecutar esta función.');
+  }
+  PropertiesService.getScriptProperties().setProperty('NETELIP_TOKEN', token);
+  Logger.log('✅ Token Netelip guardado en Project Properties. Elimina el valor del código.');
+}
+
 // ============================================
-// CONFIGURACIÓN DE RECORDATORIOS - Mantener de tu config actual
+// CONFIGURACIÓN DE RECORDATORIOS
 // ============================================
 const RECORDATORIOS_CONFIG = {
   diasEsperaAceptacion: 2,
   maxRecordatoriosRecojo: 20,
-  diasEntreRecordatoriosRecojo: 2
+  diasEntreRecordatoriosRecojo: 2,
+  // Presupuesto enviado
+  diasPrimerRecordatorio: 1,       // día siguiente al envío
+  diasEntreRecordatorios: 2,       // cada 2 días
+  diasVencimiento: 30,             // mensaje especial en día 30
+  maxReintentos: 4                 // intentos máximos por registro fallido
 };
 
 // ============================================
-// MODO PRUEBA - Mantener de tu config actual
+// MODO PRUEBA
 // ============================================
 const MODO_TEST = {
   activo: false,
   emailPrueba: "keysiwin12@gmail.com",
   telefonoPrueba: "51941536797"
 };
-
-// ============================================
-// VALIDACIÓN DE USUARIOS
-// ============================================
-function validarUsuario(email) {
-  // Para MVP: cualquier usuario de Google puede entrar
-  return true;
-
-  // Para producción, descomentar una de estas opciones:
-
-  // Opción 1: Solo dominio específico
-  // return email.endsWith('@kelatos.com');
-
-  // Opción 2: Lista específica de emails
-  // const autorizados = [
-  //   'usuario1@gmail.com',
-  //   'usuario2@kelatos.com'
-  // ];
-  // return autorizados.includes(email);
-}

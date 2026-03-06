@@ -1,9 +1,11 @@
 **/**
 !backend/**
 !frontend/**
+!Index.html
 !appsscript.json
 README.md
 DEPLOYMENT.md
 .git/**
 node_modules/**
+tests/**
 .clasp.json

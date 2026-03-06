@@ -1,150 +1,93 @@
 /**
  * CODE.GS - Entry Point de la aplicación
- * Rutas y funciones expuestas al frontend
- * VERSION: 1.2 - 2025-01-21
+ * Versión: 2.0.0 - Reestructuración simplificada
+ * Fecha: 2026-01-22
  */
 
 // ============================================
-// WEB APP - ENTRY POINTS
+// WEB APP - ENTRY POINT
 // ============================================
-
-// Función para verificar versión desplegada
-function obtenerVersion() {
-  return {
-    exito: true,
-    version: '1.4.0',
-    fecha: '2025-01-21',
-    mensaje: 'Métricas habilitadas + página de detalle de reparación'
-  };
-}
 
 /**
- * Función principal para servir páginas HTML
- * @param {Object} e - Parámetros de la petición
- * @returns {HtmlOutput} Página HTML
+ * Función principal del Web App
+ * Sirve el dashboard (Index.html) con datos pre-cargados
  */
 function doGet(e) {
-  const page = e.parameter.page || 'dashboard';  // Cambiar default a dashboard
-
   try {
-    // Servir la página solicitada (sin autenticación por ahora)
-    return servirPagina(page);
+    Logger.log('📄 Sirviendo Index.html - Dashboard');
+
+    const template = HtmlService.createTemplateFromFile('Index');
+
+    // Inyectar configuración
+    const catalogosDoGet = obtenerCatalogosEmpleados();
+    const proveedoresDoGet = obtenerProveedores();
+    template.KELATOS = KELATOS;
+    template.ESTADOS_REPARACION = ESTADOS_REPARACION;
+    template.ESTADOS_PEDIDO = ESTADOS_PEDIDO;
+    template.TECNICOS = JSON.stringify(catalogosDoGet.tecnicos);
+    template.COMPRADORES = JSON.stringify(catalogosDoGet.compradores);
+    template.EMPLEADOS = JSON.stringify(catalogosDoGet.empleados);
+    template.MARCAS = MARCAS_EQUIPOS;
+    template.PROVEEDORES = JSON.stringify(proveedoresDoGet);
+
+    // Pre-cargar datos del 
+    
+    Logger.log('🔵 Pre-cargando datos para dashboard...');
+    try {
+      // Leer hoja reparaciones una sola vez y compartirla
+      const dataReparaciones = obtenerTodoConHeader("reparaciones");
+
+      // Pre-cargar solo reparaciones activas (sin finalizadas), todas sin paginar
+      const reparaciones = buscarReparaciones({ finalizadas: false }, 1, 0, dataReparaciones);
+      template.REPARACIONES_INICIALES = JSON.stringify({
+        exito: true,
+        resultados: reparaciones.resultados || [],
+        total: reparaciones.total || 0,
+        pagina: 1,
+        totalPaginas: 1
+      });
+      Logger.log(`✓ Pre-cargadas ${reparaciones.total} reparaciones activas`);
+
+      // Pre-cargar métricas (reutiliza el mismo array, evita segunda lectura)
+      const metricas = obtenerMetricas(dataReparaciones);
+      template.METRICAS_INICIALES = JSON.stringify(metricas);
+      Logger.log('✓ Pre-cargadas métricas');
+    } catch (error) {
+      Logger.log(`⚠️ Error pre-cargando datos: ${error.message}`);
+      template.REPARACIONES_INICIALES = JSON.stringify({
+        exito: false, error: error.message, resultados: [], total: 0
+      });
+      template.METRICAS_INICIALES = JSON.stringify({
+        exito: false,
+        error: error.message
+      });
+    }
+
+    const html = template.evaluate()
+      .setTitle('Dashboard - Kelatos')
+      .setFaviconUrl(KELATOS.logo)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    Logger.log('✅ Index.html servido correctamente');
+    return html;
 
   } catch (error) {
     Logger.log(`❌ Error en doGet: ${error.message}`);
+    Logger.log(`Stack: ${error.stack}`);
     return ContentService.createTextOutput('Error: ' + error.message);
   }
 }
 
 /**
- * Sirve una página HTML
- * @param {string} nombre - Nombre de la página
- * @returns {HtmlOutput} Página HTML
+ * Función para verificar versión desplegada
  */
-function servirPagina(nombre) {
-  try {
-    Logger.log(`📄 Sirviendo página: ${nombre}`);
-
-    const template = HtmlService.createTemplateFromFile(`frontend/${nombre}`);
-
-    // Inyectar configuración
-    template.KELATOS = KELATOS;
-    template.ESTADOS_REPARACION = ESTADOS_REPARACION;
-    template.ESTADOS_PEDIDO = ESTADOS_PEDIDO;
-    template.TECNICOS = TECNICOS;
-    template.MARCAS = MARCAS_EQUIPOS;
-    template.PROVEEDORES = PROVEEDORES;
-
-    // PRE-CARGAR DATOS para dashboard (evitar google.script.run)
-    if (nombre === 'dashboard') {
-      Logger.log(`🔵 Pre-cargando datos para dashboard...`);
-      try {
-        // Pre-cargar reparaciones
-        const reparaciones = buscarReparaciones({}, 1, 50);
-        const datosJSON = {
-          exito: true,
-          resultados: reparaciones.resultados || [],
-          total: reparaciones.total || 0,
-          pagina: 1,
-          totalPaginas: reparaciones.totalPaginas || 1
-        };
-        template.REPARACIONES_INICIALES = JSON.stringify(datosJSON);
-        Logger.log(`✓ Pre-cargadas ${reparaciones.total} reparaciones`);
-
-        // Pre-cargar métricas
-        const metricas = obtenerMetricas();
-        template.METRICAS_INICIALES = JSON.stringify(metricas);
-        Logger.log(`✓ Pre-cargadas métricas`);
-      } catch (e) {
-        Logger.log(`⚠️ Error pre-cargando datos: ${e.message}`);
-        template.REPARACIONES_INICIALES = JSON.stringify({
-          exito: false,
-          error: e.message,
-          resultados: [],
-          total: 0
-        });
-        template.METRICAS_INICIALES = JSON.stringify({
-          exito: false,
-          error: e.message
-        });
-      }
-    }
-
-    Logger.log(`✓ Template creado, evaluando...`);
-
-    const html = template.evaluate()
-      .setTitle(`${nombre === 'login' ? 'Login' : 'Dashboard'} - Kelatos`)
-      .setFaviconUrl(KELATOS.logo)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-
-    Logger.log(`✓ Página ${nombre} servida correctamente`);
-
-    return html;
-
-  } catch (error) {
-    Logger.log(`❌ Error al servir página ${nombre}: ${error.message}`);
-    Logger.log(`Stack trace: ${error.stack}`);
-
-    // Página de error con más detalles
-    const errorHtml = HtmlService.createHtmlOutput(`
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
-            .error-container { background: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #dc3545; }
-            pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
-            .btn { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #1768ea; color: white; text-decoration: none; border-radius: 5px; }
-          </style>
-        </head>
-        <body>
-          <div class="error-container">
-            <h1>⚠️ Error al cargar la página</h1>
-            <p><strong>Página solicitada:</strong> ${nombre}</p>
-            <p><strong>Error:</strong></p>
-            <pre>${error.message}</pre>
-            <p><strong>Stack trace:</strong></p>
-            <pre>${error.stack || 'No disponible'}</pre>
-            <a href="?page=test" class="btn">Ir a página de prueba</a>
-            <a href="?page=login" class="btn">Volver al inicio</a>
-          </div>
-        </body>
-      </html>
-    `);
-
-    return errorHtml;
-  }
-}
-
-/**
- * Incluye archivos parciales (CSS, JS)
- * @param {string} filename - Nombre del archivo
- * @returns {string} Contenido del archivo
- */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+function obtenerVersion() {
+  return {
+    exito: true,
+    version: '2.0.0',
+    fecha: '2026-01-22',
+    mensaje: 'Reestructuración simplificada - Un solo archivo Index.html'
+  };
 }
 
 // ============================================
@@ -217,10 +160,15 @@ function apiCrearReparacion(datos) {
     datos.equipoModelo = sanitizarTexto(datos.equipoModelo);
     datos.sintoma = sanitizarTexto(datos.sintoma);
 
-    // Crear reparación
-    const resultado = crearReparacion(datos);
-
-    return resultado;
+    // Generar resguardo y crear atómicamente para evitar duplicados concurrentes
+    const lock = LockService.getScriptLock();
+    lock.waitLock(15000);
+    try {
+      datos.resguardo = String(generarSiguienteResguardo());
+      return crearReparacion(datos);
+    } finally {
+      lock.releaseLock();
+    }
 
   } catch (error) {
     Logger.log(`❌ Error en apiCrearReparacion: ${error.message}`);
@@ -228,6 +176,21 @@ function apiCrearReparacion(datos) {
       exito: false,
       error: error.message
     };
+  }
+}
+
+/**
+ * API: Obtiene el siguiente número de resguardo disponible
+ * @returns {Object} { exito, resguardo }
+ */
+function apiObtenerSiguienteResguardo() {
+  try {
+    verificarPermisos();
+    const resguardo = generarSiguienteResguardo();
+    return { exito: true, resguardo: resguardo };
+  } catch (error) {
+    Logger.log(`❌ Error en apiObtenerSiguienteResguardo: ${error.message}`);
+    return { exito: false, error: error.message };
   }
 }
 
@@ -253,6 +216,28 @@ function apiObtenerReparacion(resguardo) {
       exito: false,
       error: error.message
     };
+  }
+}
+
+/**
+ * API: Refresca el dashboard — devuelve todas las reparaciones activas + métricas
+ * @returns {Object} { exito, resultados, total, metricas }
+ */
+function apiRefrescarDashboard() {
+  try {
+    verificarPermisos();
+    const dataReparaciones = obtenerTodoConHeader("reparaciones");
+    const reparaciones = buscarReparaciones({ finalizadas: false }, 1, 0, dataReparaciones);
+    const metricas = obtenerMetricas(dataReparaciones);
+    return {
+      exito: true,
+      resultados: reparaciones.resultados || [],
+      total: reparaciones.total || 0,
+      metricas: metricas
+    };
+  } catch (error) {
+    Logger.log(`❌ Error en apiRefrescarDashboard: ${error.message}`);
+    return { exito: false, error: error.message };
   }
 }
 
@@ -413,15 +398,16 @@ function apiAgregarObservacion(resguardo, texto) {
 
 /**
  * API: Actualiza el presupuesto
- * @param {string} resguardo - Número de resguardo
- * @param {Object} presupuesto - Datos del presupuesto
+ * @param {string} presupuestoId - ID del presupuesto
+ * @param {Object} datos - Datos del presupuesto
+ * @param {Array} piezas - Piezas del presupuesto
  * @returns {Object} Resultado
  */
-function apiActualizarPresupuesto(resguardo, presupuesto) {
+function apiActualizarPresupuesto(presupuestoId, datos, piezas) {
   try {
     verificarPermisos();
 
-    const resultado = actualizarPresupuesto(resguardo, presupuesto);
+    const resultado = actualizarPresupuesto(presupuestoId, datos, piezas);
 
     return resultado;
 
@@ -436,14 +422,15 @@ function apiActualizarPresupuesto(resguardo, presupuesto) {
 
 /**
  * API: Acepta un presupuesto
- * @param {string} resguardo - Número de resguardo
+ * @param {string} presupuestoId - ID del presupuesto
+ * @param {Object} opciones - Opciones adicionales
  * @returns {Object} Resultado
  */
-function apiAceptarPresupuesto(resguardo) {
+function apiAceptarPresupuesto(presupuestoId, opciones) {
   try {
     verificarPermisos();
 
-    const resultado = aceptarPresupuesto(resguardo);
+    const resultado = aceptarPresupuesto(presupuestoId, opciones);
 
     return resultado;
 
@@ -458,15 +445,15 @@ function apiAceptarPresupuesto(resguardo) {
 
 /**
  * API: Rechaza un presupuesto
- * @param {string} resguardo - Número de resguardo
+ * @param {string} presupuestoId - ID del presupuesto
  * @param {string} motivo - Motivo del rechazo
  * @returns {Object} Resultado
  */
-function apiRechazarPresupuesto(resguardo, motivo) {
+function apiRechazarPresupuesto(presupuestoId, motivo) {
   try {
     verificarPermisos();
 
-    const resultado = rechazarPresupuesto(resguardo, motivo);
+    const resultado = rechazarPresupuesto(presupuestoId, motivo);
 
     return resultado;
 
@@ -613,14 +600,14 @@ function apiObtenerAlertas() {
 /**
  * API: Marca como entregado
  * @param {string} resguardo - Número de resguardo
- * @param {string} numeroFactura - Número de factura
+ * @param {Object} datos - Datos de entrega (numeroFactura, etc.)
  * @returns {Object} Resultado
  */
-function apiMarcarComoEntregado(resguardo, numeroFactura) {
+function apiMarcarComoEntregado(resguardo, datos) {
   try {
     verificarPermisos();
 
-    const resultado = marcarComoEntregado(resguardo, numeroFactura);
+    const resultado = marcarComoEntregado(resguardo, datos);
 
     return resultado;
 
@@ -643,12 +630,13 @@ function apiMarcarComoEntregado(resguardo, numeroFactura) {
  */
 function apiObtenerConfiguracion() {
   try {
+    const catalogosConfig = obtenerCatalogosEmpleados();
     return {
       exito: true,
       configuracion: {
-        tecnicos: TECNICOS,
+        tecnicos: catalogosConfig.tecnicos,
         marcas: MARCAS_EQUIPOS,
-        proveedores: PROVEEDORES,
+        proveedores: obtenerProveedores(),
         estadosReparacion: Object.keys(ESTADOS_REPARACION),
         estadosPedido: Object.keys(ESTADOS_PEDIDO),
         estadosRecogida: Object.keys(ESTADOS_RECOGIDA),
@@ -672,6 +660,280 @@ function apiObtenerConfiguracion() {
 }
 
 // ============================================
+// API - REPARACIONES (acciones adicionales)
+// ============================================
+
+function apiCrearReparacionCintas(datos) {
+  try {
+    verificarPermisos();
+    datos.clienteNombre = sanitizarTexto(datos.clienteNombre);
+    datos.clienteTelefono = formatearTelefono(datos.clienteTelefono);
+    const lock = LockService.getScriptLock();
+    lock.waitLock(15000);
+    try {
+      datos.resguardo = String(generarSiguienteResguardo());
+      return crearReparacionCintas(datos);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (error) {
+    Logger.log(`❌ Error en apiCrearReparacionCintas: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiMarcarSinReparacionPorPieza(resguardo, opciones) {
+  try {
+    verificarPermisos();
+    return marcarSinReparacionPorPieza(resguardo, opciones);
+  } catch (error) {
+    Logger.log(`❌ Error en apiMarcarSinReparacionPorPieza: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiEnviarAvisoRecogidaInmediato(resguardo) {
+  try {
+    enviarAvisoRecogidaInmediato(resguardo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiEnviarAvisoRecogidaInmediato: ${error.message}`);
+  }
+}
+
+function apiDeshacerSinReparacion(resguardo) {
+  try {
+    verificarPermisos();
+    return deshacerSinReparacion(resguardo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiDeshacerSinReparacion: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiMarcarEntregaMensajeria(resguardo, activar, direccion) {
+  try {
+    verificarPermisos();
+    actualizarReparacion(resguardo, {
+      entrega_mensajeria: activar,
+      direccion_envio: direccion || ''
+    });
+    return { exito: true };
+  } catch (error) {
+    Logger.log(`❌ Error en apiMarcarEntregaMensajeria: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiActualizarEquipoEnLocal(resguardo, estado, datos) {
+  try {
+    verificarPermisos();
+    actualizarReparacion(resguardo, { equipo_en_local: estado });
+    return { exito: true };
+  } catch (error) {
+    Logger.log(`❌ Error en apiActualizarEquipoEnLocal: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiMarcarEquipoRecibido(resguardo) {
+  try {
+    verificarPermisos();
+    actualizarReparacion(resguardo, { equipo_en_local: 'SI' });
+    return { exito: true };
+  } catch (error) {
+    Logger.log(`❌ Error en apiMarcarEquipoRecibido: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiMarcarComoGarantia(resguardo) {
+  try {
+    verificarPermisos();
+    const resultado = cambiarEstadoReparacion(resguardo, 'Garantía');
+    actualizarReparacion(resguardo, { tipo_ingreso: 'GARANTIA' });
+    return { exito: true, nuevoEstado: resultado.nuevoEstado };
+  } catch (error) {
+    Logger.log(`❌ Error en apiMarcarComoGarantia: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiIniciarReparacion(resguardo, tecnico, observacion) {
+  try {
+    verificarPermisos();
+    return iniciarReparacion(resguardo, tecnico, observacion);
+  } catch (error) {
+    Logger.log(`❌ Error en apiIniciarReparacion: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiFinalizarReparacion(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return finalizarReparacion(resguardo, datos);
+  } catch (error) {
+    Logger.log(`❌ Error en apiFinalizarReparacion: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiReportarProblemaPieza(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return reportarProblemaPieza(resguardo, datos);
+  } catch (error) {
+    Logger.log(`❌ Error en apiReportarProblemaPieza: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiEnviarAPuntoLimpio(resguardo) {
+  try {
+    verificarPermisos();
+    return enviarAPuntoLimpio(resguardo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiEnviarAPuntoLimpio: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiActualizarCliente(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return actualizarCliente(resguardo, datos);
+  } catch (error) {
+    Logger.log(`❌ Error en apiActualizarCliente: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiActualizarEquipo(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return actualizarEquipo(resguardo, datos);
+  } catch (error) {
+    Logger.log(`❌ Error en apiActualizarEquipo: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+// ============================================
+// API - PRESUPUESTOS (adicionales)
+// ============================================
+
+function apiCrearPresupuesto(resguardo, datos, piezas) {
+  try {
+    verificarPermisos();
+    return crearPresupuesto(resguardo, datos, piezas);
+  } catch (error) {
+    Logger.log(`❌ Error en apiCrearPresupuesto: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiObtenerPresupuestos(resguardo) {
+  try {
+    verificarPermisos();
+    const presupuestos = obtenerPresupuestosDeReparacion(resguardo);
+    return { exito: true, presupuestos: presupuestos };
+  } catch (error) {
+    Logger.log(`❌ Error en apiObtenerPresupuestos: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiEnviarPresupuesto(presupuestoId) {
+  try {
+    verificarPermisos();
+    return enviarPresupuesto(presupuestoId);
+  } catch (error) {
+    Logger.log(`❌ Error en apiEnviarPresupuesto: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiEnviarPresupuestos(resguardo, modo) {
+  try {
+    verificarPermisos();
+    return enviarPresupuestos(resguardo, modo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiEnviarPresupuestos: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiAnularPresupuesto(presupuestoId, motivo) {
+  try {
+    verificarPermisos();
+    return anularPresupuesto(presupuestoId, motivo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiAnularPresupuesto: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+function apiFinalizarAceptacion(resguardo) {
+  try {
+    verificarPermisos();
+    return finalizarAceptacion(resguardo);
+  } catch (error) {
+    Logger.log(`❌ Error en apiFinalizarAceptacion: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+// ============================================
+// API - PEDIDOS (adicionales)
+// ============================================
+
+function apiRegistrarPedidoPieza(resguardo, datos) {
+  try {
+    verificarPermisos();
+    return registrarPedidoPieza(resguardo, datos);
+  } catch (error) {
+    Logger.log(`❌ Error en apiRegistrarPedidoPieza: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+/**
+ * API: Actualiza el estado de todos los pedidos activos de una reparación
+ * @param {string} resguardo
+ * @param {string} nuevoEstado - 'En Tránsito' | 'Recibido'
+ * @param {string} fechaRecepcion - ISO date string (sólo para 'Recibido')
+ */
+function apiActualizarEstadoPedido(resguardo, nuevoEstado, fechaRecepcion) {
+  try {
+    verificarPermisos();
+    const pedidos = obtenerPedidosDeReparacion(resguardo);
+    const estadosOrigen = nuevoEstado === 'Recibido'
+      ? ['En Tránsito', 'Pedido']
+      : ['Pendiente', 'Pedido'];
+    const pedidosAfectados = pedidos.filter(p => estadosOrigen.includes(p.estado));
+    if (pedidosAfectados.length === 0) {
+      return { exito: true, mensaje: 'No hay pedidos en estado aplicable', actualizados: 0 };
+    }
+    const opciones = nuevoEstado === 'Recibido' && fechaRecepcion
+      ? { recibidoPor: Session.getActiveUser().getEmail() }
+      : {};
+    for (const pedido of pedidosAfectados) {
+      cambiarEstadoPedido(pedido.pedidoId, nuevoEstado, opciones);
+    }
+    // Leer el estado actual de la reparación (puede haber cambiado a "Pieza Entregada")
+    const rep = obtenerReparacion(resguardo);
+    return {
+      exito: true,
+      actualizados: pedidosAfectados.length,
+      nuevoEstadoReparacion: rep ? rep.estado : null
+    };
+  } catch (error) {
+    Logger.log(`❌ Error en apiActualizarEstadoPedido: ${error.message}`);
+    return { exito: false, error: error.message };
+  }
+}
+
+// ============================================
 // TESTING
 // ============================================
 
@@ -685,7 +947,7 @@ function TEST_verificarSistema() {
     // 1. Verificar configuración
     Logger.log('1. Verificando configuración...');
     Logger.log(`   ✓ Hoja: ${SHEET_CONFIG.nombre}`);
-    Logger.log(`   ✓ Técnicos: ${TECNICOS.length}`);
+    Logger.log(`   ✓ Técnicos: ${obtenerCatalogosEmpleados().tecnicos.length}`);
     Logger.log(`   ✓ Marcas: ${MARCAS_EQUIPOS.length}`);
 
     // 2. Verificar acceso a la hoja
@@ -874,3 +1136,21 @@ function TEST_diagnosticarHoja() {
     };
   }
 }
+
+// ============================================
+// MIGRACIÓN — EJECUTAR UNA SOLA VEZ Y ELIMINAR
+// ============================================
+
+/**
+ * ⚠️  SCRIPT DE MIGRACIÓN - EJECUTAR UNA VEZ DESDE EL EDITOR DE GAS
+ * Añade las columnas mano_obra, precio_piezas (presupuestos) y precio (piezas)
+ * a los registros históricos usando las siguientes fórmulas de conversión:
+ *   mano_obra  = costo_reparacion - costo_piezas  (= ganancia_neta anterior)
+ *   precio_piezas = costo_piezas                  (sin markup en datos viejos)
+ *   pieza.precio  = pieza.costo                   (sin markup en datos viejos)
+ *   total = mano_obra + precio_piezas             (= costo_reparacion original)
+ *
+ * Tras ejecutarla con éxito, elimina esta función del código.
+ */
+
+ 

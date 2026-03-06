@@ -1,0 +1,373 @@
+<script>
+// APP.JS - Lógica principal del dashboard
+let reparacionesActuales = [];
+let paginaActual = 1;
+let filtrosActuales = {};
+let modalNuevaReparacion;
+
+// Datos pre-cargados desde el servidor (inyectados por Apps Script)
+// Usar variable global inyectada directamente
+var DATOS_INICIALES = window._DATOS_PRECARGADOS || {"exito": false, "error": "No se pre-cargaron datos"};
+var METRICAS_INICIALES = window._METRICAS_PRECARGADAS || {"exito": false, "error": "No se pre-cargaron métricas"};
+
+window.onload = async function() {
+  console.log('🔵 Dashboard: Iniciando carga...');
+  console.log('🔵 Datos pre-cargados recibidos:', DATOS_INICIALES);
+  console.log('🔵 Métricas pre-cargadas recibidas:', METRICAS_INICIALES);
+
+  try {
+    // Sin autenticación por ahora - usar usuario genérico
+    document.getElementById('userName').textContent = 'Usuario';
+    console.log('✅ Dashboard: Usuario genérico mostrado en navbar');
+
+    console.log('🔵 Dashboard: Usando datos pre-cargados del servidor...');
+
+    // Renderizar métricas pre-cargadas
+    // NOTA: Las métricas vienen directamente, no envueltas en {exito, metricas}
+    if (METRICAS_INICIALES && METRICAS_INICIALES.presupuestoPendiente !== undefined) {
+      const m = METRICAS_INICIALES;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+      document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+      document.getElementById('metricListos').textContent = m.listos || 0;
+      
+      
+      console.log('✅ Dashboard: Métricas renderizadas');
+    } else if (METRICAS_INICIALES && METRICAS_INICIALES.exito && METRICAS_INICIALES.metricas) {
+      // Formato alternativo con wrapper
+      const m = METRICAS_INICIALES.metricas;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+      document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+      document.getElementById('metricListos').textContent = m.listos || 0;
+      console.log('✅ Dashboard: Métricas renderizadas (formato wrapper)');
+    } else {
+      console.warn('⚠️ Métricas no disponibles:', METRICAS_INICIALES);
+    }
+
+    // Usar datos pre-cargados en lugar de llamar a la API
+    if (DATOS_INICIALES && DATOS_INICIALES.exito) {
+      console.log(`✅ ${DATOS_INICIALES.total} reparaciones pre-cargadas desde el servidor`);
+      reparacionesActuales = DATOS_INICIALES.resultados;
+      renderizarTablaReparaciones(DATOS_INICIALES.resultados);
+      renderizarPaginacion(DATOS_INICIALES);
+      document.getElementById('resultadosCount').textContent = DATOS_INICIALES.total;
+      console.log('✅ Dashboard: Tabla renderizada con datos pre-cargados');
+    } else {
+      console.error('❌ Error en datos pre-cargados:', DATOS_INICIALES.error);
+      mostrarError('Error al cargar datos: ' + (DATOS_INICIALES.error || 'Datos no disponibles'));
+    }
+
+  } catch (error) {
+    console.error('❌ Dashboard: Error en carga:', error);
+    console.error('Stack:', error.stack);
+    mostrarError('Error al cargar el dashboard: ' + error.message);
+  }
+};
+
+async function cargarMetricas() {
+  try {
+    const resultado = await API.obtenerMetricas();
+    if (resultado.exito) {
+      const m = resultado.metricas;
+      document.getElementById('metricPresupuesto').textContent = m.presupuestoPendiente || 0;
+      document.getElementById('metricEsperandoPieza').textContent = m.esperandoPieza || 0;
+      document.getElementById('metricReparando').textContent = m.enReparacion || 0;
+      document.getElementById('metricListos').textContent = m.listos || 0;
+      if (m.alertas && m.alertas.length > 0) mostrarAlertas(m.alertas);
+    }
+  } catch (error) {
+    console.error('Error métricas:', error);
+  }
+}
+
+function mostrarAlertas(alertas) {
+  const section = document.getElementById('alertasSection');
+  const list = document.getElementById('alertasList');
+  let html = '<ul class="mb-0">';
+  alertas.slice(0, 5).forEach(a => {
+    html += `<li class="mb-1">${a.mensaje} - <strong>${a.resguardo}</strong></li>`;
+  });
+  html += '</ul>';
+  if (alertas.length > 5) html += `<small class="text-muted">Y ${alertas.length - 5} alertas más...</small>`;
+  list.innerHTML = html;
+  section.style.display = 'block';
+}
+
+async function cargarPedidosPendientes() {
+  try {
+    const resultado = await API.obtenerPedidosActivos();
+    if (resultado.exito) {
+      const p = resultado.pedidos;
+      const total = p.enTransito.length + p.pedidos.length + p.retrasados.length;
+      document.getElementById('pedidosPendientesCount').textContent = total;
+      if (total === 0) {
+        document.getElementById('pedidosList').innerHTML = '<p class="text-muted text-center py-3"><i class="fas fa-check-circle"></i> No hay pedidos pendientes</p>';
+        return;
+      }
+      let html = '<table class="table table-sm mb-0"><thead><tr><th>Resguardo</th><th>Cliente</th><th>Proveedor</th><th>Estado</th><th>Llegada</th><th>Acción</th></tr></thead><tbody>';
+      p.retrasados.forEach(ped => { html += renderizarFilaPedido(ped, true); });
+      p.enTransito.forEach(ped => { html += renderizarFilaPedido(ped, false); });
+      p.pedidos.forEach(ped => { html += renderizarFilaPedido(ped, false); });
+      html += '</tbody></table>';
+      document.getElementById('pedidosList').innerHTML = html;
+    }
+  } catch (error) {
+    console.error('Error pedidos:', error);
+  }
+}
+
+function renderizarFilaPedido(pedido, retrasado) {
+  const fecha = pedido.pieza.fechaEntrega ? new Date(pedido.pieza.fechaEntrega).toLocaleDateString('es-ES', {day: '2-digit', month: '2-digit'}) : '-';
+  const clase = retrasado ? 'table-danger' : '';
+  const icono = pedido.pieza.estadoPedido === 'En Tránsito' ? '🚚' : '📦';
+  return `<tr class="${clase}"><td><strong>${pedido.resguardo}</strong></td><td>${pedido.cliente.nombre}</td><td><small>${pedido.pieza.proveedor || '-'}</small></td><td><span class="badge bg-warning">${icono} ${pedido.pieza.estadoPedido}</span></td><td>${fecha}${retrasado ? ' <span class="badge bg-danger">⚠️</span>' : ''}</td><td><a href="?page=reparacion&resguardo=${pedido.resguardo}" class="btn btn-sm btn-outline-primary">Ver</a></td></tr>`;
+}
+
+async function cargarReparaciones() {
+  try {
+    console.log('🔵 cargarReparaciones: Iniciando carga vía API...');
+    console.log('🔵 filtrosActuales:', filtrosActuales);
+    console.log('🔵 paginaActual:', paginaActual);
+
+    mostrarLoader();
+
+    // Llamar a la API (solo para filtros/paginación, no para carga inicial)
+    const resultado = await API.buscarReparaciones(filtrosActuales, paginaActual, 50);
+
+    console.log('🔵 Resultado buscarReparaciones:', resultado);
+    console.log('🔵 Tipo de resultado:', typeof resultado);
+    console.log('🔵 resultado === null:', resultado === null);
+    console.log('🔵 resultado === undefined:', resultado === undefined);
+
+    if (resultado === null || resultado === undefined) {
+      console.error('❌ ERROR CRÍTICO: resultado es null o undefined');
+      console.error('❌ Esto indica que google.script.run no está retornando nada');
+      mostrarError('Error crítico: La función del backend no retornó datos. Revisa los logs de Apps Script.');
+      return;
+    }
+
+    if (resultado && resultado.exito) {
+      console.log('✅ Búsqueda exitosa, renderizando tabla...');
+      reparacionesActuales = resultado.resultados;
+      renderizarTablaReparaciones(resultado.resultados);
+      renderizarPaginacion(resultado);
+      document.getElementById('resultadosCount').textContent = resultado.total;
+    } else {
+      console.error('❌ Error en resultado:', resultado);
+      mostrarError(resultado?.error || 'Error al cargar reparaciones');
+    }
+  } catch (error) {
+    console.error('❌ Error reparaciones:', error);
+    console.error('Stack:', error.stack);
+    mostrarError('Error al cargar reparaciones: ' + error.message);
+  }
+}
+
+function renderizarTablaReparaciones(reparaciones) {
+  const tbody = document.getElementById('reparacionesTableBody');
+  if (reparaciones.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-inbox"></i> No se encontraron reparaciones</td></tr>';
+    return;
+  }
+  let html = '';
+  reparaciones.forEach(rep => {
+    const dias = calcularDias(rep.fechaElaboracionPpto);
+    const pieza = rep.pieza && rep.pieza.estadoPedido ? `<span class="badge bg-warning">${rep.pieza.estadoPedido}</span>` : '-';
+    const badge = obtenerBadgeEstado(rep.estado);
+    html += `<tr onclick="verReparacion('${rep.resguardo}')" style="cursor: pointer;"><td><strong>${rep.resguardo}</strong></td><td>${rep.cliente.nombre}<br><small class="text-muted">${rep.cliente.telefono}</small></td><td>${rep.equipo.modelo}</td><td>${badge}</td><td><small>${rep.tecnico || '-'}</small></td><td>${pieza}</td><td>${dias >= 0 ? dias + 'd' : '-'}</td><td><button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); verReparacion('${rep.resguardo}')"><i class="fas fa-eye"></i></button></td></tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+function obtenerBadgeEstado(estado) {
+  const colores = {
+    'Presupuesto Pendiente': 'info',
+    'Garantía': 'purple',
+    'Presupuesto Enviado': 'secondary',
+    'Presupuesto Aceptado': 'success',
+    'Presupuesto Rechazado': 'danger',
+    'Pieza Pendiente': 'warning',
+    'Pieza Entregada': 'info',
+    'En Reparación': 'primary',
+    'Reparado': 'success',
+    'No tiene Reparación': 'secondary'
+  };
+  const color = colores[estado] || 'secondary';
+  return `<span class="badge bg-${color}">${estado}</span>`;
+}
+
+function calcularDias(fecha) {
+  if (!fecha) return -1;
+  const hoy = new Date();
+  const fechaObj = new Date(fecha);
+  return Math.floor((hoy - fechaObj) / (1000 * 60 * 60 * 24));
+}
+
+function renderizarPaginacion(resultado) {
+  const div = document.getElementById('pagination');
+  if (resultado.totalPaginas <= 1) { div.innerHTML = ''; return; }
+  let html = '<ul class="pagination pagination-sm mb-0">';
+  html += `<li class="page-item ${resultado.pagina === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${resultado.pagina - 1}); return false;"><i class="fas fa-chevron-left"></i></a></li>`;
+  for (let i = 1; i <= Math.min(resultado.totalPaginas, 5); i++) {
+    html += `<li class="page-item ${i === resultado.pagina ? 'active' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${i}); return false;">${i}</a></li>`;
+  }
+  if (resultado.totalPaginas > 5) html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+  html += `<li class="page-item ${resultado.pagina === resultado.totalPaginas ? 'disabled' : ''}"><a class="page-link" href="#" onclick="cambiarPagina(${resultado.pagina + 1}); return false;"><i class="fas fa-chevron-right"></i></a></li></ul>`;
+  div.innerHTML = html;
+}
+
+function cambiarPagina(pagina) {
+  paginaActual = pagina;
+  cargarReparaciones();
+}
+
+let timeoutBusqueda;
+function buscarReparaciones() {
+  clearTimeout(timeoutBusqueda);
+  timeoutBusqueda = setTimeout(() => {
+    filtrosActuales.busqueda = document.getElementById('searchInput').value;
+    paginaActual = 1;
+    cargarReparaciones();
+  }, 500);
+}
+
+function aplicarFiltros() {
+  const estado = document.getElementById('filterEstado').value;
+  const tecnico = document.getElementById('filterTecnico').value;
+  filtrosActuales.estado = estado !== 'Todos' ? estado : null;
+  filtrosActuales.tecnico = tecnico !== 'Todos' ? tecnico : null;
+  paginaActual = 1;
+  cargarReparaciones();
+}
+
+function abrirModalNuevaReparacion() {
+  if (!modalNuevaReparacion) {
+    modalNuevaReparacion = new bootstrap.Modal(document.getElementById('modalNuevaReparacion'));
+  }
+  document.getElementById('formNuevaReparacion').reset();
+  // Establecer fecha de hoy por defecto
+  document.getElementById('fechaRecepcion').value = new Date().toISOString().split('T')[0];
+  modalNuevaReparacion.show();
+}
+
+async function guardarNuevaReparacion() {
+  try {
+    // Obtener estado inicial seleccionado
+    const estadoInicial = document.querySelector('input[name="estadoInicial"]:checked').value;
+
+    const datos = {
+      resguardo: document.getElementById('resguardo').value.trim(),
+      fechaRecepcion: document.getElementById('fechaRecepcion').value,
+      clienteNombre: document.getElementById('clienteNombre').value.trim(),
+      clienteTelefono: document.getElementById('clienteTelefono').value.trim(),
+      clienteEmail: document.getElementById('clienteEmail').value.trim(),
+      equipoModelo: document.getElementById('equipoModelo').value.trim(),
+      sintoma: document.getElementById('sintoma').value.trim(),
+      estado: estadoInicial
+    };
+
+    // Validar campos obligatorios
+    if (!datos.resguardo) {
+      mostrarError('El Nº de Resguardo es obligatorio');
+      return;
+    }
+    if (!datos.fechaRecepcion) {
+      mostrarError('La fecha de recepción es obligatoria');
+      return;
+    }
+    if (!datos.clienteNombre) {
+      mostrarError('El nombre del cliente es obligatorio');
+      return;
+    }
+    if (!datos.clienteTelefono) {
+      mostrarError('El teléfono del cliente es obligatorio');
+      return;
+    }
+    if (!datos.equipoModelo) {
+      mostrarError('El modelo/marca del equipo es obligatorio');
+      return;
+    }
+    if (!datos.sintoma) {
+      mostrarError('El síntoma/avería es obligatorio');
+      return;
+    }
+
+    const btn = event.target;
+    const textoOriginal = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando...';
+
+    console.log('🔵 Registrando recepción:', datos);
+    const resultado = await API.crearReparacion(datos);
+    console.log('🔵 Resultado crear:', resultado);
+
+    if (resultado && resultado.exito) {
+      modalNuevaReparacion.hide();
+      mostrarExito(`Recepción ${datos.resguardo} registrada exitosamente`);
+      // Redirigir al dashboard para cargar datos frescos
+      setTimeout(() => {
+        window.location.href = '?page=dashboard';
+      }, 1500);
+    } else {
+      mostrarError(resultado?.error || resultado?.errores?.join(', ') || 'Error al registrar');
+      btn.disabled = false;
+      btn.innerHTML = textoOriginal;
+    }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    console.error('Stack:', error.stack);
+    mostrarError('Error al registrar la recepción: ' + error.message);
+  }
+}
+
+function verReparacion(resguardo) {
+  window.location.href = `?page=reparacion&resguardo=${resguardo}`;
+}
+
+async function cerrarSesion() {
+  try {
+    await API.cerrarSesion();
+    localStorage.removeItem('kelatos_usuario');
+    window.location.href = '?page=login';
+  } catch (error) {
+    localStorage.removeItem('kelatos_usuario');
+    window.location.href = '?page=login';
+  }
+}
+
+function mostrarLoader() {
+  document.getElementById('reparacionesTableBody').innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div><p class="mt-2 text-muted">Cargando reparaciones...</p></td></tr>';
+}
+
+function mostrarError(mensaje) {
+  alert('Error: ' + mensaje);
+}
+
+function mostrarExito(mensaje) {
+  alert('Éxito: ' + mensaje);
+}
+
+// ============================================
+// FUNCIONES DE TEST Y DIAGNÓSTICO
+// ============================================
+
+/**
+ * Test simplificado - llama a función que retorna datos sin fechas
+ * Usar en consola: testBusquedaSimple()
+ */
+async function testBusquedaSimple() {
+  console.log('🔍 TEST: Llamando a apiBuscarReparacionesSimple...');
+  try {
+    const resultado = await API.call('apiBuscarReparacionesSimple');
+    console.log('✅ Resultado:', resultado);
+    return resultado;
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return { exito: false, error: error.message };
+  }
+}
+
+// Exponer funciones globalmente para pruebas desde consola
+window.testBusquedaSimple = testBusquedaSimple;
+</script>

@@ -60,18 +60,18 @@
         <p class="text-muted mb-0">Resumen general del sistema</p>
       </div>
 
-      <!-- Card: En Diagnóstico -->
+      <!-- Card: Presupuesto Pendiente -->
       <div class="col-md-6 col-lg-3 mb-3">
         <div class="card metric-card border-0 shadow-sm h-100">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">En Diagnóstico</h6>
-                <h2 class="mb-0 fw-bold" id="metricDiagnostico">-</h2>
+                <h6 class="text-muted mb-1">Ppto. Pendiente</h6>
+                <h2 class="mb-0 fw-bold" id="metricPresupuesto">-</h2>
                 <small class="text-muted">equipos</small>
               </div>
-              <div class="metric-icon bg-warning bg-opacity-10">
-                <i class="fas fa-search text-warning"></i>
+              <div class="metric-icon bg-info bg-opacity-10">
+                <i class="fas fa-file-invoice-dollar text-info"></i>
               </div>
             </div>
           </div>
@@ -84,25 +84,25 @@
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Esperando Pieza</h6>
+                <h6 class="text-muted mb-1">Pieza Pendiente</h6>
                 <h2 class="mb-0 fw-bold" id="metricEsperandoPieza">-</h2>
                 <small class="text-muted">equipos</small>
               </div>
-              <div class="metric-icon bg-info bg-opacity-10">
-                <i class="fas fa-box text-info"></i>
+              <div class="metric-icon bg-warning bg-opacity-10">
+                <i class="fas fa-box text-warning"></i>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Card: Reparando -->
+      <!-- Card: En Reparacion -->
       <div class="col-md-6 col-lg-3 mb-3">
         <div class="card metric-card border-0 shadow-sm h-100">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="text-muted mb-1">Reparando</h6>
+                <h6 class="text-muted mb-1">En Reparacion</h6>
                 <h2 class="mb-0 fw-bold" id="metricReparando">-</h2>
                 <small class="text-muted">equipos</small>
               </div>
@@ -266,18 +266,37 @@
     </div>
   </div>
 
-  <!-- Modal: Nueva Reparación -->
+  <!-- Modal: Nueva Reparación (Fase 1 - Recepción) -->
   <div class="modal fade" id="modalNuevaReparacion" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header bg-primary text-white">
           <h5 class="modal-title">
-            <i class="fas fa-plus-circle"></i> Nueva Reparación
+            <i class="fas fa-plus-circle"></i> Nueva Reparación - Recepción
           </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            <strong>Fase 1:</strong> Datos del parte de recepción de Factusol
+          </div>
           <form id="formNuevaReparacion">
+            <!-- Resguardo y Fecha -->
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-file-alt"></i> Datos del Parte
+            </h6>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Nº Resguardo (Factusol) *</label>
+                <input type="text" class="form-control" id="resguardo" placeholder="Ej: RES-2025-001" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Fecha de Recepción *</label>
+                <input type="date" class="form-control" id="fechaRecepcion" required>
+              </div>
+            </div>
+
             <!-- Cliente -->
             <h6 class="text-primary mb-3">
               <i class="fas fa-user"></i> Datos del Cliente
@@ -304,112 +323,34 @@
               <i class="fas fa-laptop"></i> Datos del Equipo
             </h6>
             <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Marca/Ficha *</label>
-                <label for="form-label"></label>
-                <select class="form-select" id="equipoMarca" required>
-                  <option value="">Seleccionar...</option>
-                  <? MARCAS.forEach(function(marca) { ?>
-                    <option value="<?= marca ?>"><?= marca ?></option>
-                  <? }); ?>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Modelo</label>
-                <input type="text" class="form-control" id="equipoModelo" required>
+              <div class="col-12">
+                <label class="form-label">Modelo / Marca del Equipo *</label>
+                <input type="text" class="form-control" id="equipoModelo" placeholder="Ej: MacBook Pro 2020, Dell XPS 15..." required>
               </div>
             </div>
             <div class="row mb-4">
               <div class="col-12">
-                <label class="form-label">Síntoma/Avería *</label>
-                <textarea class="form-control" id="sintoma" rows="3" required></textarea>
+                <label class="form-label">Síntoma / Avería *</label>
+                <textarea class="form-control" id="sintoma" rows="3" placeholder="Describe el problema reportado por el cliente..." required></textarea>
               </div>
             </div>
 
-            <!-- Estado y Técnico -->
+            <!-- Estado Inicial -->
             <h6 class="text-primary mb-3">
-              <i class="fas fa-cog"></i> Asignación
-            </h6>
-            <div class="row mb-3">
-              <div class="col-md-6">
-                <label class="form-label">Técnico Asignado</label>
-                <select class="form-select" id="tecnico">
-                  <option value="">Sin asignar</option>
-                  <? TECNICOS.forEach(function(tecnico) { ?>
-                    <option value="<?= tecnico ?>"><?= tecnico ?></option>
-                  <? }); ?>
-                </select>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Estado Inicial</label>
-                <select class="form-select" id="estado">
-                  <option value="En Diagnóstico">En Diagnóstico</option>
-                  <option value="Presupuesto Pendiente">Presupuesto Pendiente</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row mb-3">
-              <div class="col-12">
-                <label class="form-label">Observaciones</label>
-                <textarea class="form-control" id="observaciones" rows="2"></textarea>
-              </div>
-            </div>
-
-            <!-- Pieza/Repuesto -->
-            <h6 class="text-primary mb-3">
-              <i class="fas fa-cogs"></i> ¿Necesita Pieza/Repuesto?
+              <i class="fas fa-flag"></i> Estado Inicial
             </h6>
             <div class="row mb-3">
               <div class="col-12">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="necesitaPieza" onchange="toggleSeccionPieza()">
-                  <label class="form-check-label" for="necesitaPieza">
-                    Sí, necesita pieza o repuesto
+                <div class="btn-group w-100" role="group">
+                  <input type="radio" class="btn-check" name="estadoInicial" id="estadoPresupuestoPendiente" value="Presupuesto Pendiente" checked>
+                  <label class="btn btn-outline-primary" for="estadoPresupuestoPendiente">
+                    <i class="fas fa-file-invoice-dollar"></i> Presupuesto Pendiente
                   </label>
-                </div>
-              </div>
-            </div>
 
-            <!-- Sección de Pieza (oculta por defecto) -->
-            <div id="seccionPieza" style="display: none;">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Nombre de la Pieza</label>
-                  <input type="text" class="form-control" id="piezaNombre" placeholder="Ej: Pantalla LCD, Batería...">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Proveedor</label>
-                  <select class="form-select" id="piezaProveedor">
-                    <option value="">Sin asignar</option>
-                    <? PROVEEDORES.forEach(function(proveedor) { ?>
-                      <option value="<?= proveedor ?>"><?= proveedor ?></option>
-                    <? }); ?>
-                  </select>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Costo Pieza (€)</label>
-                  <input type="number" class="form-control" id="piezaCosto" step="0.01" min="0" placeholder="0.00">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Estado Pedido</label>
-                  <select class="form-select" id="piezaEstadoPedido">
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="Pedido">Pedido</option>
-                    <option value="En Tránsito">En Tránsito</option>
-                  </select>
-                </div>
-              </div>
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Fecha Estimada de Entrega</label>
-                  <input type="date" class="form-control" id="piezaFechaEntrega">
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">Enlace de Compra</label>
-                  <input type="url" class="form-control" id="piezaEnlaceCompra" placeholder="https://...">
+                  <input type="radio" class="btn-check" name="estadoInicial" id="estadoGarantia" value="Garantía">
+                  <label class="btn btn-outline-success" for="estadoGarantia">
+                    <i class="fas fa-shield-alt"></i> Garantía
+                  </label>
                 </div>
               </div>
             </div>
@@ -418,7 +359,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="button" class="btn btn-primary" onclick="guardarNuevaReparacion()">
-            <i class="fas fa-save"></i> Crear Reparación
+            <i class="fas fa-save"></i> Registrar Recepción
           </button>
         </div>
       </div>
