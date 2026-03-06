@@ -14,6 +14,7 @@ const KELATOS = {
   email: "soporte@kelatos.com",
   logo: "https://kelatos.com/wp-content/uploads/2021/12/logo_web_kelatos.png",
   web: "https://kelatos.com",
+  PRECIO_REVISION: 20,
 
   colores: {
     primario: "#1768ea",
@@ -30,7 +31,7 @@ const KELATOS = {
 // ============================================
 // CONFIGURACIÓN DE HOJAS (MULTI-TABLA)
 // ============================================
-const DB_ID = "1yb0tqFy1p_krwiIX0fvuczsBoJXlxGz08UWAVTek6mU";
+const DB_ID = "1MmAZeCgSdmbRpXm2DeWEMLSWej1H08S6lBjDLgaYe4A";
 
 const HOJAS = {
   empleados: {
@@ -78,7 +79,16 @@ const HOJAS = {
       creado_por: 16,
       fecha_creacion: 17,
       tipo_recepcion: 18,
-      equipo_en_local: 19
+      equipo_en_local: 19,
+      entrega_mensajeria: 20,
+      direccion_envio: 21,
+      // Nueva columna JSON para cintas (optimizada)
+      datos_cintas: 22,
+      motivo_sin_reparacion: 23,
+      tipo_ingreso: 24,
+      ultimo_usuario: 25,
+      presupuestos_modo: 26,
+      revision_pagada: 27
     }
   },
 
@@ -100,7 +110,10 @@ const HOJAS = {
       fecha_respuesta: 12,
       motivo_rechazo: 13,
       notas: 14,
-      tipo_pieza: 15
+      tipo_pieza: 15,
+      descripcion: 16,
+      mano_obra: 17,
+      precio_piezas: 18
     }
   },
 
@@ -113,7 +126,8 @@ const HOJAS = {
       descripcion: 3,
       costo: 4,
       enlace: 5,
-      notas: 6
+      notas: 6,
+      precio: 7
     }
   },
 
@@ -133,7 +147,9 @@ const HOJAS = {
       problema_tipo: 10,
       codigo_devolucion: 11,
       pedido_remplazo_id: 12,
-      notas: 13
+      notas: 13,
+      fecha_devolucion: 14,
+      enlace: 15
     }
   },
 
@@ -159,11 +175,15 @@ const HOJAS = {
       tipo: 3,
       canal: 4,
       destinatario: 5,
-      mensaje: 6,
+      // col 6 reservada (mensaje — en desuso)
       estado: 7,
       fecha_programada: 8,
       fecha_envio: 9,
-      error: 10
+      error: 10,
+      numero_secuencia: 11,
+      intentos: 12,
+      id_externo: 13,
+      datos_extra: 14
     }
   }
 };
@@ -185,8 +205,8 @@ const ESTADOS_REPARACION = {
     descripcion: "Esperando respuesta del cliente", fase: 2
   },
   "Presupuesto Aceptado": {
-    color: "#28a745", icono: "✅",
-    descripcion: "Cliente aceptó, proceder con reparación", fase: 3
+    color: "#20c997", icono: "✅",
+    descripcion: "Presupuesto aceptado, pendiente de registrar pedido de pieza", fase: 3
   },
   "Presupuesto Rechazado": {
     color: "#dc3545", icono: "❌",
@@ -246,10 +266,11 @@ const ESTADOS_RECOGIDA = {
 // ESTADOS DE PRESUPUESTO
 // ============================================
 const ESTADOS_PRESUPUESTO = {
-  "borrador": { color: "#6c757d", descripcion: "En elaboración" },
-  "enviado": { color: "#17a2b8", descripcion: "Enviado al cliente" },
-  "aceptado": { color: "#28a745", descripcion: "Aceptado por el cliente" },
-  "rechazado": { color: "#dc3545", descripcion: "Rechazado por el cliente" }
+  "borrador":  { color: "#6c757d", descripcion: "En elaboración" },
+  "enviado":   { color: "#17a2b8", descripcion: "Enviado al cliente" },
+  "aceptado":  { color: "#28a745", descripcion: "Aceptado por el cliente" },
+  "rechazado": { color: "#dc3545", descripcion: "Rechazado por el cliente" },
+  "anulado":   { color: "#6c757d", descripcion: "Anulado después de ser aceptado" }
 };
 
 // ============================================
@@ -263,13 +284,28 @@ const MARCAS_EQUIPOS = [
 ];
 
 // ============================================
-// CREDENCIALES NETELIP (SMS)
+// NETELIP (SMS) — token en Project Properties
+// Guardar con: configurarTokenNetelip()
 // ============================================
 const NETELIP = {
-  token: "144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac",
+  get token() { return PropertiesService.getScriptProperties().getProperty('NETELIP_TOKEN') || ''; },
   from: "Kelatos",
   apiUrl: "https://api.netelip.com/v1/sms/api.php"
 };
+
+/**
+ * Guardar el token Netelip en las propiedades del proyecto.
+ * Ejecutar UNA VEZ desde el editor de GAS tras rotar el token.
+ * El token NUNCA debe estar en el código fuente.
+ */
+function configurarTokenNetelip() {
+  const token = '144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac';
+  if (token === '144253c56723e71e7da7da6ffb56d8f243270f3e4df17b68afc5e1b23d3332ac') {
+    throw new Error('Reemplaza el valor de la variable token antes de ejecutar esta función.');
+  }
+  PropertiesService.getScriptProperties().setProperty('NETELIP_TOKEN', token);
+  Logger.log('✅ Token Netelip guardado en Project Properties. Elimina el valor del código.');
+}
 
 // ============================================
 // CONFIGURACIÓN DE RECORDATORIOS
@@ -277,7 +313,12 @@ const NETELIP = {
 const RECORDATORIOS_CONFIG = {
   diasEsperaAceptacion: 2,
   maxRecordatoriosRecojo: 20,
-  diasEntreRecordatoriosRecojo: 2
+  diasEntreRecordatoriosRecojo: 2,
+  // Presupuesto enviado
+  diasPrimerRecordatorio: 1,       // día siguiente al envío
+  diasEntreRecordatorios: 2,       // cada 2 días
+  diasVencimiento: 30,             // mensaje especial en día 30
+  maxReintentos: 4                 // intentos máximos por registro fallido
 };
 
 // ============================================

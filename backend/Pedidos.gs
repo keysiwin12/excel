@@ -37,43 +37,122 @@ function registrarPedidoPieza(resguardo, datos) {
     }
 
     for (const pieza of piezas) {
-      const pedidoId = generarId("PED", "pedidos", "pedido_id");
+      // Buscar si ya existe un pedido pendiente para esta pieza
+      const pedidosExistentes = buscarTodosPorCampo("pedidos", "resguardo", resguardo);
+      let pedidoExistente = null;
 
-      const filaPed = new Array(Object.keys(colPed).length).fill("");
-      filaPed[colPed.pedido_id] = pedidoId;
-      filaPed[colPed.pieza_id] = pieza.piezaId || "";
-      filaPed[colPed.resguardo] = resguardo;
-      filaPed[colPed.comprado_por] = datos.compradoPor || Session.getActiveUser().getEmail();
-      filaPed[colPed.numero_pedido] = pieza.numeroPedido || "";
-      filaPed[colPed.fecha_pedido] = datos.fechaPedido ? new Date(datos.fechaPedido) : new Date();
-      filaPed[colPed.fecha_estimada] = pieza.fechaEstimada ? new Date(pieza.fechaEstimada) : "";
-      filaPed[colPed.estado] = "En Tránsito";
-      filaPed[colPed.notas] = pieza.descripcion || "";
+      const estadosEditables = ["Pendiente", "Pedido", "En Tránsito"];
+      let candidatos = [];
+      if (pieza.piezaId) {
+        // Si tenemos piezaId, buscar pedidos activos para esa pieza
+        candidatos = pedidosExistentes.filter(p =>
+          p.fila[colPed.pieza_id] === pieza.piezaId &&
+          estadosEditables.includes(p.fila[colPed.estado])
+        );
+      } else {
+        // Si no hay piezaId, buscar pedidos activos sin número asignado
+        candidatos = pedidosExistentes.filter(p =>
+          estadosEditables.includes(p.fila[colPed.estado]) &&
+          (!p.fila[colPed.numero_pedido] || p.fila[colPed.numero_pedido].toString().trim() === "")
+        );
+      }
+      pedidoExistente = candidatos[0] || null;
 
-      agregarFila("pedidos", filaPed);
-      pedidosCreados.push(pedidoId);
+      // Si hay duplicados "Pendiente" (por doble-aceptación), cancelar los sobrantes
+      if (candidatos.length > 1) {
+        for (let d = 1; d < candidatos.length; d++) {
+          actualizarCeldas("pedidos", candidatos[d].numFila, { estado: "Cancelado", notas: "Duplicado cancelado automáticamente" });
+        }
+        Logger.log(`⚠️ ${candidatos.length - 1} pedido(s) duplicado(s) cancelado(s) para ${resguardo}`);
+      }
+
+      let pedidoId;
+
+      if (pedidoExistente) {
+        // ACTUALIZAR pedido existente
+        pedidoId = pedidoExistente.fila[colPed.pedido_id];
+
+        const cambios = {
+          comprado_por: datos.compradoPor || Session.getActiveUser().getEmail(),
+          numero_pedido: pieza.numeroPedido || "",
+          fecha_pedido: datos.fechaPedido ? new Date(datos.fechaPedido) : new Date(),
+          fecha_estimada: pieza.fechaEstimada ? new Date(pieza.fechaEstimada) : "",
+          estado: "En Tránsito",
+          notas: pieza.descripcion || pedidoExistente.fila[colPed.notas] || "",
+          enlace: pieza.enlace || ""
+        };
+
+        actualizarCeldas("pedidos", pedidoExistente.numFila, cambios);
+
+        // Sincronizar datos en Piezas_Presupuesto si tiene piezaId
+        const piezaIdExistente = pieza.piezaId || pedidoExistente.fila[colPed.pieza_id];
+        if (piezaIdExistente) {
+          try {
+            const piezaResult = buscarPorId("piezas", "pieza_id", piezaIdExistente);
+            if (piezaResult) {
+              const cambiosPieza = {};
+              if (pieza.enlace) cambiosPieza.enlace = pieza.enlace;
+              if (pieza.descripcion) cambiosPieza.descripcion = pieza.descripcion;
+              if (Object.keys(cambiosPieza).length > 0) {
+                actualizarCeldas("piezas", piezaResult.numFila, cambiosPieza);
+              }
+            }
+          } catch (e) {
+            Logger.log(`⚠️ No se pudo sincronizar pieza ${piezaIdExistente}: ${e.message}`);
+          }
+        }
+
+        pedidosCreados.push(pedidoId);
+      } else {
+        // CREAR nuevo pedido (retrocompatibilidad)
+        pedidoId = generarId("PED", "pedidos", "pedido_id");
+
+        const filaPed = new Array(Object.keys(colPed).length).fill("");
+        filaPed[colPed.pedido_id] = pedidoId;
+        filaPed[colPed.pieza_id] = pieza.piezaId || "";
+        filaPed[colPed.resguardo] = resguardo;
+        filaPed[colPed.comprado_por] = datos.compradoPor || Session.getActiveUser().getEmail();
+        filaPed[colPed.numero_pedido] = pieza.numeroPedido || "";
+        filaPed[colPed.fecha_pedido] = datos.fechaPedido ? new Date(datos.fechaPedido) : new Date();
+        filaPed[colPed.fecha_estimada] = pieza.fechaEstimada ? new Date(pieza.fechaEstimada) : "";
+        filaPed[colPed.estado] = "En Tránsito";
+        filaPed[colPed.notas] = pieza.descripcion || "";
+        filaPed[colPed.enlace] = pieza.enlace || "";
+
+        agregarFila("pedidos", filaPed);
+        pedidosCreados.push(pedidoId);
+      }
     }
 
-    // Cambiar estado de la reparación a "Pieza Pendiente" (una sola vez)
-    actualizarCelda("reparaciones", numFila, "estado", "Pieza Pendiente");
+    // IMPORTANTE: Forzar flush para que las filas estén disponibles para lectura inmediata
+    SpreadsheetApp.flush();
 
-    // Historial
+    // Cambiar estado de la reparación a "Pieza Pendiente" al registrar pedido
+    const usuario = datos.compradoPor || Session.getActiveUser().getEmail();
+    actualizarReparacion(resguardo, {
+      estado: "Pieza Pendiente",
+      ultimo_usuario: obtenerNombreUsuarioActual()
+    });
+
+    // Historial + flush inmediato
     agregarEventoHistorial(
       resguardo,
       "pedido_registrado",
-      `${pedidosCreados.length} pedido(s) registrado(s): ${pedidosCreados.join(", ")}`
+      `${pedidosCreados.length} pedido(s) registrado(s): ${pedidosCreados.join(", ")}`,
+      usuario
     );
+    procesarColaHistorial();
 
     invalidarCaches();
 
-    // Retornar con la lista actualizada de pedidos
+    // Retornar con la lista actualizada de pedidos y el nuevo estado
     const pedidosActualizados = obtenerPedidosDeReparacion(resguardo);
 
     return {
       exito: true,
       pedidoIds: pedidosCreados,
-      nuevoEstado: "Pieza Pendiente",
       pedidos: pedidosActualizados,
+      nuevoEstado: "Pieza Pendiente",
       mensaje: `${pedidosCreados.length} pedido(s) registrado(s) exitosamente`
     };
 
@@ -131,20 +210,24 @@ function cambiarEstadoPedido(pedidoId, nuevoEstado, opciones) {
       });
 
       if (todosRecibidos) {
-        // Cambiar estado de la reparación a "Pieza Entregada"
-        const numFilaRep = encontrarFilaPorResguardo(resguardo);
-        if (numFilaRep) {
-          actualizarCelda("reparaciones", numFilaRep, "estado", "Pieza Entregada");
-        }
+        actualizarReparacion(resguardo, {
+          estado: "Pieza Entregada",
+          ultimo_usuario: obtenerNombreUsuarioActual()
+        });
       }
     }
 
-    // Historial
+    // Historial + flush inmediato
+    const usuario = nuevoEstado === "Recibido"
+      ? (opciones.recibidoPor || Session.getActiveUser().getEmail())
+      : Session.getActiveUser().getEmail();
     agregarEventoHistorial(
       resguardo,
       "pedido_estado",
-      `Pedido ${pedidoId}: ${estadoAnterior} → ${nuevoEstado}`
+      `Pedido ${pedidoId}: ${estadoAnterior} → ${nuevoEstado}`,
+      usuario
     );
+    procesarColaHistorial();
 
     invalidarCaches();
 

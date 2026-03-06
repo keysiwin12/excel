@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=text"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
   "dependencies": {
     "robotjs": "^0.6.0"
   }

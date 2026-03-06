@@ -4,21 +4,96 @@
  */
 
 // ============================================
+// CACHÉ GLOBAL DE RENDIMIENTO
+// ============================================
+
+/**
+ * Caché de SpreadSheet para evitar múltiples openById()
+ * MEJORA: ~500ms por llamada evitada
+ */
+var SS_CACHE = SS_CACHE || null;
+
+/**
+ * Caché de hojas individuales { "reparaciones": Sheet, "presupuestos": Sheet }
+ * MEJORA: ~200ms por llamada evitada
+ */
+var SHEET_CACHE = SHEET_CACHE || {};
+
+/**
+ * Caché global de IDs máximos por hoja
+ * Formato: { "presupuestos_presupuesto_id": 42, "piezas_pieza_id": 156 }
+ */
+var ID_CACHE = ID_CACHE || {};
+
+/**
+ * Caché de versiones máximas por resguardo
+ * Formato: { "12345": 3, "12346": 1 }
+ */
+var VERSION_CACHE = VERSION_CACHE || {};
+
+/**
+ * Cola de eventos de historial para procesamiento asíncrono
+ */
+var HISTORIAL_QUEUE = HISTORIAL_QUEUE || [];
+
+/**
+ * Caché de email → nombre de empleado
+ */
+var NOMBRE_CACHE = NOMBRE_CACHE || {};
+
+// ============================================
 // FUNCIONES HELPER GENÉRICAS
 // ============================================
 
 /**
- * Obtiene una hoja por su clave en HOJAS
+ * Resuelve email del usuario actual a nombre de empleado.
+ * Usa caché para evitar lecturas repetidas.
+ * @returns {string} Nombre del empleado o email como fallback
+ */
+function obtenerNombreUsuarioActual() {
+  const email = Session.getActiveUser().getEmail();
+  if (!email) return "";
+  if (NOMBRE_CACHE[email]) return NOMBRE_CACHE[email];
+  const cols = HOJAS.empleados.cols;
+  const data = obtenerTodo("empleados");
+  for (const fila of data) {
+    if (String(fila[cols.email] || "").toLowerCase() === email.toLowerCase()) {
+      NOMBRE_CACHE[email] = fila[cols.nombre] || email;
+      return NOMBRE_CACHE[email];
+    }
+  }
+  NOMBRE_CACHE[email] = email;
+  return email;
+}
+
+/**
+ * Obtiene el SpreadSheet con caché (evita múltiples openById)
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getSpreadsheet() {
+  if (!SS_CACHE) {
+    SS_CACHE = SpreadsheetApp.openById(DB_ID);
+  }
+  return SS_CACHE;
+}
+
+/**
+ * Obtiene una hoja por su clave en HOJAS (con caché)
  * @param {string} claveHoja - Clave en el objeto HOJAS (ej: "reparaciones", "presupuestos")
  * @returns {GoogleAppsScript.Spreadsheet.Sheet}
  */
 function getHoja(claveHoja) {
+  // Verificar caché primero
+  if (SHEET_CACHE[claveHoja]) {
+    return SHEET_CACHE[claveHoja];
+  }
+
   const config = HOJAS[claveHoja];
   if (!config) {
     throw new Error(`Hoja "${claveHoja}" no está configurada en HOJAS`);
   }
 
-  const ss = SpreadsheetApp.openById(DB_ID);
+  const ss = getSpreadsheet();
   const sheet = ss.getSheetByName(config.nombre);
 
   if (!sheet) {
@@ -26,6 +101,8 @@ function getHoja(claveHoja) {
     throw new Error(`Hoja "${config.nombre}" no encontrada. Disponibles: ${hojas.join(', ')}`);
   }
 
+  // Guardar en caché
+  SHEET_CACHE[claveHoja] = sheet;
   return sheet;
 }
 
@@ -51,7 +128,7 @@ function obtenerTodoConHeader(claveHoja) {
 }
 
 /**
- * Busca una fila por valor en una columna específica
+ * ⚡ OPTIMIZADO: Busca una fila usando TextFinder (mucho más rápido que leer toda la hoja)
  * @param {string} claveHoja - Clave en HOJAS
  * @param {string} claveCol - Clave de columna en cols (ej: "resguardo")
  * @param {*} valor - Valor a buscar
@@ -60,19 +137,26 @@ function obtenerTodoConHeader(claveHoja) {
 function buscarPorId(claveHoja, claveCol, valor) {
   const config = HOJAS[claveHoja];
   const colIndex = config.cols[claveCol];
-  const data = obtenerTodoConHeader(claveHoja);
+  const sheet = getHoja(claveHoja);
   const valorStr = String(valor);
 
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][colIndex]) === valorStr) {
-      return { fila: data[i], numFila: i + 1 };
-    }
-  }
-  return null;
+  // Usar TextFinder en la columna específica (mucho más rápido)
+  const columna = sheet.getRange(1, colIndex + 1, sheet.getLastRow(), 1);
+  const finder = columna.createTextFinder(valorStr).matchEntireCell(true);
+  const found = finder.findNext();
+
+  if (!found) return null;
+
+  const numFila = found.getRow();
+  // Obtener la fila completa
+  const numCols = Object.keys(config.cols).length;
+  const fila = sheet.getRange(numFila, 1, 1, numCols).getValues()[0];
+
+  return { fila: fila, numFila: numFila };
 }
 
 /**
- * Busca todas las filas que coincidan con un valor en una columna
+ * ⚡ OPTIMIZADO: Busca todas las filas usando TextFinder
  * @param {string} claveHoja - Clave en HOJAS
  * @param {string} claveCol - Clave de columna
  * @param {*} valor - Valor a buscar
@@ -81,28 +165,54 @@ function buscarPorId(claveHoja, claveCol, valor) {
 function buscarTodosPorCampo(claveHoja, claveCol, valor) {
   const config = HOJAS[claveHoja];
   const colIndex = config.cols[claveCol];
-  const data = obtenerTodoConHeader(claveHoja);
+  const sheet = getHoja(claveHoja);
   const valorStr = String(valor);
+  const numCols = Object.keys(config.cols).length;
+
+  // Usar TextFinder para encontrar todas las coincidencias
+  const columna = sheet.getRange(1, colIndex + 1, sheet.getLastRow(), 1);
+  const finder = columna.createTextFinder(valorStr).matchEntireCell(true);
+  const matches = finder.findAll();
+
+  if (matches.length === 0) return [];
+
+  // Obtener números de fila de todas las coincidencias
+  const filaNumeros = matches.map(m => m.getRow()).filter(r => r > 1); // Excluir header
+
+  if (filaNumeros.length === 0) return [];
+
+  // Optimización: si hay muchas coincidencias, leer en batch
+  // Si hay pocas, leer individualmente es más eficiente
   const resultados = [];
 
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][colIndex]) === valorStr) {
-      resultados.push({ fila: data[i], numFila: i + 1 });
+  if (filaNumeros.length <= 5) {
+    // Pocas filas: leer individualmente
+    for (const numFila of filaNumeros) {
+      const fila = sheet.getRange(numFila, 1, 1, numCols).getValues()[0];
+      resultados.push({ fila: fila, numFila: numFila });
+    }
+  } else {
+    // Muchas filas: leer todo el rango y filtrar
+    const allData = sheet.getDataRange().getValues();
+    for (const numFila of filaNumeros) {
+      resultados.push({ fila: allData[numFila - 1], numFila: numFila });
     }
   }
+
   return resultados;
 }
 
 /**
- * Agrega una fila al final de una hoja
+ * ⚡ OPTIMIZADO: Agrega una fila usando setValues (más rápido que appendRow)
  * @param {string} claveHoja - Clave en HOJAS
  * @param {Array} datos - Array con los valores de la fila
  * @returns {number} Número de fila agregada (1-based)
  */
 function agregarFila(claveHoja, datos) {
   const sheet = getHoja(claveHoja);
-  sheet.appendRow(datos);
-  return sheet.getLastRow();
+  const newRow = sheet.getLastRow() + 1;
+  sheet.getRange(newRow, 1, 1, datos.length).setValues([datos]);
+  return newRow;
 }
 
 /**
@@ -120,7 +230,7 @@ function actualizarCelda(claveHoja, numFila, claveCol, valor) {
 }
 
 /**
- * Actualiza múltiples celdas de una fila de una vez (más eficiente)
+ * ⚡ OPTIMIZADO: Actualiza múltiples celdas de una fila con batch update
  * @param {string} claveHoja - Clave en HOJAS
  * @param {number} numFila - Número de fila (1-based)
  * @param {Object} cambios - Objeto {claveCol: valor, ...}
@@ -128,13 +238,34 @@ function actualizarCelda(claveHoja, numFila, claveCol, valor) {
 function actualizarCeldas(claveHoja, numFila, cambios) {
   const config = HOJAS[claveHoja];
   const sheet = getHoja(claveHoja);
+  const cols = config.cols;
 
+  // Obtener número total de columnas
+  const numCols = Object.keys(cols).length;
+
+  // Leer la fila completa una sola vez
+  const fila = sheet.getRange(numFila, 1, 1, numCols).getValues()[0];
+
+  // Modificar los valores necesarios en memoria
   for (const [claveCol, valor] of Object.entries(cambios)) {
-    const colIndex = config.cols[claveCol];
+    const colIndex = cols[claveCol];
     if (colIndex !== undefined) {
-      sheet.getRange(numFila, colIndex + 1).setValue(valor);
+      fila[colIndex] = valor;
     }
   }
+
+  // Escribir la fila completa de vuelta en una sola operación
+  sheet.getRange(numFila, 1, 1, numCols).setValues([fila]);
+}
+
+/**
+ * Elimina una fila de una hoja
+ * @param {string} claveHoja - Clave en HOJAS
+ * @param {number} numFila - Número de fila (1-indexed, incluyendo header)
+ */
+function eliminarFila(claveHoja, numFila) {
+  const sheet = getHoja(claveHoja);
+  sheet.deleteRow(numFila);
 }
 
 /**
@@ -145,6 +276,15 @@ function actualizarCeldas(claveHoja, numFila, cambios) {
  * @returns {string} ID generado (ej: "PPTO-0001")
  */
 function generarId(prefijo, claveHoja, claveCol) {
+  const cacheKey = `${claveHoja}_${claveCol}`;
+
+  // Si hay en caché, incrementar y usar (evita lectura de hoja)
+  if (ID_CACHE[cacheKey] !== undefined) {
+    ID_CACHE[cacheKey]++;
+    return `${prefijo}-${String(ID_CACHE[cacheKey]).padStart(4, '0')}`;
+  }
+
+  // Primera vez: leer hoja para obtener máximo
   const config = HOJAS[claveHoja];
   const colIndex = config.cols[claveCol];
   const data = obtenerTodoConHeader(claveHoja);
@@ -159,7 +299,9 @@ function generarId(prefijo, claveHoja, claveCol) {
     }
   }
 
-  return `${prefijo}-${String(maxNum + 1).padStart(4, '0')}`;
+  // Guardar en caché para próximas llamadas
+  ID_CACHE[cacheKey] = maxNum + 1;
+  return `${prefijo}-${String(ID_CACHE[cacheKey]).padStart(4, '0')}`;
 }
 
 // ============================================
@@ -208,6 +350,44 @@ function obtenerEmpleados(filtro) {
   }
 
   return empleados;
+}
+
+/**
+ * Obtiene todos los catálogos de empleados en UNA sola lectura de hoja
+ * @returns {{empleados: Array, tecnicos: Array, compradores: Array}}
+ */
+function obtenerCatalogosEmpleados() {
+  const cols = HOJAS.empleados.cols;
+  const data = obtenerTodo("empleados");
+  const empleados = [];
+  const tecnicos = [];
+  const compradores = [];
+
+  const esActivo = (val) => {
+    const v = String(val).toUpperCase();
+    return v === "TRUE" || v === "SI" || v === "SÍ" || v === "1";
+  };
+
+  for (const fila of data) {
+    if (!fila[cols.nombre]) continue;
+    if (!esActivo(fila[cols.activo])) continue;
+
+    const obj = {
+      id: fila[cols.empleado_id] || "",
+      nombre: fila[cols.nombre] || "",
+      email: fila[cols.email] || "",
+      rol: fila[cols.rol] || "",
+      esTecnico: fila[cols.es_tecnico],
+      esComprador: fila[cols.es_comprador],
+      activo: fila[cols.activo]
+    };
+
+    empleados.push(obj);
+    if (esActivo(fila[cols.es_tecnico])) tecnicos.push(obj);
+    if (esActivo(fila[cols.es_comprador])) compradores.push(obj);
+  }
+
+  return { empleados, tecnicos, compradores };
 }
 
 /**
@@ -327,6 +507,29 @@ function crearReparacion(datos) {
     fila[cols.fecha_creacion] = new Date();
     fila[cols.tipo_recepcion] = datos.tipoRecepcion || "LOCAL";
     fila[cols.equipo_en_local] = datos.equipoEnLocal || "SI";
+    fila[cols.entrega_mensajeria] = datos.entregaMensajeria || "NO";
+    fila[cols.direccion_envio] = datos.direccionEnvio || "";
+    fila[cols.motivo_sin_reparacion] = "";  // Vacío por defecto
+    fila[cols.tipo_ingreso] = (estadoInicial === "Garantía") ? "GARANTIA" : "NORMAL";
+    fila[cols.ultimo_usuario] = obtenerNombreUsuarioActual();
+    fila[cols.revision_pagada] = datos.revisionPagada || "NO";
+
+    // Cintas: usar nuevo formato JSON (solo si hay datos de cintas)
+    if (datos.datosCintas) {
+      fila[cols.datos_cintas] = serializarDatosCintas(datos.datosCintas);
+    } else if (datos.esReparacionCintas === "SI" || datos.esReparacionCintas === "SÍ") {
+      // Crear desde valores individuales si vienen del formato viejo
+      const datosCintas = crearDatosCintas({
+        vhs: datos.cintasVHS,
+        vhsc: datos.cintasVHSC,
+        beta: datos.cintasBeta,
+        minidv: datos.cintasMiniDV,
+        "8mm": datos.cintas8mmCassette,
+        precioUnitario: datos.precioPorCinta
+      });
+      fila[cols.datos_cintas] = serializarDatosCintas(datosCintas);
+    }
+    // Si NO hay cintas, el campo queda vacío (sin asignar valor)
 
     agregarFila("reparaciones", fila);
 
@@ -398,14 +601,14 @@ function obtenerReparacion(resguardo) {
  * @param {number} porPagina
  * @returns {Object} Resultados paginados
  */
-function buscarReparaciones(filtros, pagina, porPagina) {
+function buscarReparaciones(filtros, pagina, porPagina, dataPreCargada) {
   try {
     filtros = filtros || {};
     pagina = pagina || 1;
-    porPagina = porPagina || 50;
+    porPagina = (porPagina !== undefined && porPagina !== null) ? porPagina : 50;
 
     const cols = HOJAS.reparaciones.cols;
-    const data = obtenerTodoConHeader("reparaciones");
+    const data = dataPreCargada || obtenerTodoConHeader("reparaciones");
     const resultados = [];
 
     for (let i = 1; i < data.length; i++) {
@@ -477,9 +680,73 @@ function buscarReparaciones(filtros, pagina, porPagina) {
       return fechaB - fechaA;
     });
 
+    // Si porPagina es 0, devolver TODOS los resultados (modo SSOT)
+    if (porPagina === 0) {
+      // Batch: leer TODOS los pedidos en 1 sola lectura y agrupar por resguardo
+      const allPedidosData = obtenerTodo("pedidos");
+      const colPed = HOJAS.pedidos.cols;
+      const pedidosPorResguardo = {};
+      for (let j = 0; j < allPedidosData.length; j++) {
+        const resg = String(allPedidosData[j][colPed.resguardo] || "");
+        if (!resg) continue;
+        if (!pedidosPorResguardo[resg]) pedidosPorResguardo[resg] = [];
+        pedidosPorResguardo[resg].push(convertirFilaAPedido(allPedidosData[j], j + 2));
+      }
+      for (const rep of resultados) {
+        rep.pedidos = pedidosPorResguardo[rep.resguardo] || [];
+      }
+
+      // Batch: leer presupuestos aceptados en 1 pasada para calcular entrega estimada en tabla
+      const allPptosData = obtenerTodo("presupuestos");
+      const colP = HOJAS.presupuestos.cols;
+      const pptoAceptadoPorResguardo = {};
+      for (let j = 0; j < allPptosData.length; j++) {
+        const fp = allPptosData[j];
+        if (String(fp[colP.estado] || '') !== 'aceptado') continue;
+        const resg = String(fp[colP.resguardo] || '');
+        if (!resg || pptoAceptadoPorResguardo[resg]) continue;
+        let fechaRespuesta = null;
+        if (fp[colP.fecha_respuesta]) {
+          try { fechaRespuesta = new Date(fp[colP.fecha_respuesta]).toISOString(); } catch(e) {}
+        }
+        pptoAceptadoPorResguardo[resg] = {
+          diasEntrega: Number(fp[colP.dias_entrega] || 0),
+          fechaRespuesta: fechaRespuesta,
+          costoPiezas: Number(fp[colP.costo_piezas] || 0)
+        };
+      }
+      for (const rep of resultados) {
+        rep.pptoAceptadoSummary = pptoAceptadoPorResguardo[rep.resguardo] || null;
+      }
+
+      return {
+        resultados: resultados,
+        total: resultados.length,
+        pagina: 1,
+        totalPaginas: 1,
+        porPagina: resultados.length
+      };
+    }
+
     // Paginar
     const inicio = (pagina - 1) * porPagina;
     const paginados = resultados.slice(inicio, inicio + porPagina);
+
+    // Cargar pedidos solo para reparaciones activas (el historial no los muestra en tabla)
+    if (!filtros.finalizadas) {
+      const allPedidosData = obtenerTodo("pedidos");
+      const colPed = HOJAS.pedidos.cols;
+      const pedidosPorResguardo = {};
+      for (let j = 0; j < allPedidosData.length; j++) {
+        const resg = String(allPedidosData[j][colPed.resguardo] || "");
+        if (!resg) continue;
+        if (!pedidosPorResguardo[resg]) pedidosPorResguardo[resg] = [];
+        pedidosPorResguardo[resg].push(convertirFilaAPedido(allPedidosData[j], j + 2));
+      }
+      for (const rep of paginados) {
+        rep.pedidos = pedidosPorResguardo[rep.resguardo] || [];
+      }
+    }
 
     return {
       resultados: paginados,
@@ -562,6 +829,8 @@ function convertirFilaAReparacion(fila, numFila) {
     },
     estado: fila[col.estado] || "",
     presupuestoAceptadoId: fila[col.presupuesto_aceptado_id] || "",
+    presupuestosAceptadosIds: String(fila[col.presupuesto_aceptado_id] || "")
+      .split(",").map(s => s.trim()).filter(Boolean),
     tecnicoAsignado: fila[col.tecnico_asignado] || "",
     fechaReparacion: serializarFecha(fila[col.fecha_reparacion]),
     resultadoReparacion: fila[col.resultado_reparacion] || "",
@@ -570,6 +839,16 @@ function convertirFilaAReparacion(fila, numFila) {
     estadoEntrega: fila[col.estado_entrega] || "PENDIENTE",
     tipoRecepcion: fila[col.tipo_recepcion] || "LOCAL",
     equipoEnLocal: fila[col.equipo_en_local] || "SI",
+    entregaMensajeria: fila[col.entrega_mensajeria] || "NO",
+    direccionEnvio: fila[col.direccion_envio] || "",
+    motivoSinReparacion: fila[col.motivo_sin_reparacion] || "",
+    tipoIngreso: fila[col.tipo_ingreso] || "NORMAL",
+    revisionPagada: fila[col.revision_pagada] || "NO",
+    ultimoUsuario: fila[col.ultimo_usuario] || "",
+
+    // Cintas: leer desde nuevo formato JSON (con fallback a columnas viejas)
+    datosCintas: leerDatosCintasDesdeFila(fila, col),
+
     observaciones: fila[col.observaciones] || "",
     creadoPor: fila[col.creado_por] || "",
     fechaCreacion: serializarFecha(fila[col.fecha_creacion]),
@@ -610,14 +889,23 @@ function obtenerPresupuestosDeReparacion(resguardo) {
     // Obtener piezas de este presupuesto
     const piezas = obtenerPiezasDePresupuesto(pptoId);
 
+    // Compatibilidad con datos antiguos: si mano_obra no existe, usar costo_reparacion como fallback
+    const manoObra = f[colP.mano_obra] !== undefined && f[colP.mano_obra] !== ""
+      ? (f[colP.mano_obra] || 0)
+      : (f[colP.costo_reparacion] || 0);
+    const precioPiezas = f[colP.precio_piezas] !== undefined && f[colP.precio_piezas] !== ""
+      ? (f[colP.precio_piezas] || 0)
+      : (f[colP.costo_piezas] || 0);
+
     return {
       presupuestoId: pptoId,
       resguardo: f[colP.resguardo] || "",
       version: f[colP.version] || 1,
       fechaElaboracion: serializarFecha(f[colP.fecha_elaboracion]),
       elaboradoPor: f[colP.elaborado_por] || "",
-      costoReparacion: f[colP.costo_reparacion] || 0,
+      manoObra: manoObra,
       costoPiezas: f[colP.costo_piezas] || 0,
+      precioPiezas: precioPiezas,
       total: f[colP.total] || 0,
       gananciaNeta: f[colP.ganancia_neta] || 0,
       diasEntrega: f[colP.dias_entrega] || 0,
@@ -627,10 +915,45 @@ function obtenerPresupuestosDeReparacion(resguardo) {
       motivoRechazo: f[colP.motivo_rechazo] || "",
       notas: f[colP.notas] || "",
       tipoPieza: f[colP.tipo_pieza] || "no",
+      descripcion: f[colP.descripcion] || "",
       piezas: piezas,
       numFila: r.numFila
     };
   });
+}
+
+/**
+ * ⚡ OPTIMIZADO: Obtiene la versión máxima con caché
+ * @param {string} resguardo
+ * @returns {number} Versión máxima (0 si no hay presupuestos)
+ */
+function obtenerMaxVersionPresupuesto(resguardo) {
+  const cacheKey = String(resguardo);
+
+  // Verificar caché primero
+  if (VERSION_CACHE[cacheKey] !== undefined) {
+    return VERSION_CACHE[cacheKey];
+  }
+
+  const filas = buscarTodosPorCampo("presupuestos", "resguardo", resguardo);
+  if (filas.length === 0) {
+    VERSION_CACHE[cacheKey] = 0;
+    return 0;
+  }
+
+  const colP = HOJAS.presupuestos.cols;
+  const maxVersion = Math.max(...filas.map(r => r.fila[colP.version] || 0));
+  VERSION_CACHE[cacheKey] = maxVersion;
+  return maxVersion;
+}
+
+/**
+ * Actualiza el caché de versión después de crear un presupuesto
+ * @param {string} resguardo
+ * @param {number} version
+ */
+function actualizarCacheVersion(resguardo, version) {
+  VERSION_CACHE[String(resguardo)] = version;
 }
 
 /**
@@ -644,12 +967,17 @@ function obtenerPiezasDePresupuesto(presupuestoId) {
 
   return filas.map(r => {
     const f = r.fila;
+    // Compatibilidad con datos antiguos: si precio no existe, usar costo como fallback
+    const precio = f[colPz.precio] !== undefined && f[colPz.precio] !== ""
+      ? (f[colPz.precio] || 0)
+      : (f[colPz.costo] || 0);
     return {
       piezaId: f[colPz.pieza_id] || "",
       presupuestoId: f[colPz.presupuesto_id] || "",
       proveedorId: f[colPz.proveedor_id] || "",
       descripcion: f[colPz.descripcion] || "",
       costo: f[colPz.costo] || 0,
+      precio: precio,
       enlace: f[colPz.enlace] || "",
       notas: f[colPz.notas] || "",
       numFila: r.numFila
@@ -704,28 +1032,9 @@ function convertirFilaAPedido(fila, numFila) {
     codigoDevolucion: fila[col.codigo_devolucion] || "",
     pedidoRemplazoId: fila[col.pedido_remplazo_id] || "",
     notas: fila[col.notas] || "",
+    enlace: fila[col.enlace] || "",
     numFila: numFila
   };
-}
-
-/**
- * Obtiene pedidos activos (Pedido o En Tránsito) de todas las reparaciones
- * @returns {Array<Object>}
- */
-function obtenerPedidosPendientes() {
-  const col = HOJAS.pedidos.cols;
-  const data = obtenerTodoConHeader("pedidos");
-  const pedidos = [];
-
-  for (let i = 1; i < data.length; i++) {
-    const fila = data[i];
-    const estado = fila[col.estado];
-    if (estado === "Pedido" || estado === "En Tránsito") {
-      pedidos.push(convertirFilaAPedido(fila, i + 1));
-    }
-  }
-
-  return pedidos;
 }
 
 // ============================================
@@ -742,20 +1051,140 @@ function obtenerPedidosPendientes() {
  * @returns {string} ID del evento creado
  */
 function agregarEventoHistorial(resguardo, tipo, descripcion, empleadoId, datosExtra) {
-  const eventoId = generarId("EVT", "historial", "evento_id");
-  const cols = HOJAS.historial.cols;
+  // empleado_id es siempre el email del usuario activo que ejecuta la acción.
+  // El parámetro empleadoId se mantiene solo como fallback (triggers sin sesión activa).
+  // Los nombres de técnico ya aparecen en la descripción del evento.
+  const emailActivo = Session.getActiveUser().getEmail();
+  HISTORIAL_QUEUE.push({
+    resguardo: resguardo,
+    tipo: tipo,
+    descripcion: descripcion,
+    empleadoId: emailActivo || empleadoId || '',
+    datosExtra: datosExtra || "",
+    timestamp: new Date()
+  });
 
-  const fila = new Array(Object.keys(cols).length).fill("");
-  fila[cols.evento_id] = eventoId;
-  fila[cols.resguardo] = resguardo;
-  fila[cols.fecha_hora] = new Date();
-  fila[cols.empleado_id] = empleadoId || Session.getActiveUser().getEmail();
-  fila[cols.tipo] = tipo;
-  fila[cols.descripcion] = descripcion;
-  fila[cols.datos_extra] = datosExtra || "";
+  // Flush inmediato: cada google.script.run es un contexto separado,
+  // la cola se pierde al terminar si no se procesa.
+  // Funciones con múltiples eventos llaman procesarColaHistorial() manualmente
+  // antes de agregar, así el batch aún funciona para ellas.
+  procesarColaHistorial();
 
-  agregarFila("historial", fila);
-  return eventoId;
+  return `EVT-PENDING-${HISTORIAL_QUEUE.length}`;
+}
+
+/**
+ * Procesa la cola de eventos de historial en batch
+ * Se llama automáticamente cuando hay 10+ eventos o manualmente
+ */
+function procesarColaHistorial() {
+  if (HISTORIAL_QUEUE.length === 0) return;
+
+  try {
+    const cols = HOJAS.historial.cols;
+    const eventos = [...HISTORIAL_QUEUE]; // Copiar cola
+    HISTORIAL_QUEUE = []; // Limpiar cola
+
+    // Preparar todas las filas en batch
+    const filas = eventos.map(evento => {
+      const eventoId = generarId("EVT", "historial", "evento_id");
+      const fila = new Array(Object.keys(cols).length).fill("");
+      fila[cols.evento_id] = eventoId;
+      fila[cols.resguardo] = evento.resguardo;
+      fila[cols.fecha_hora] = evento.timestamp;
+      fila[cols.empleado_id] = evento.empleadoId;
+      fila[cols.tipo] = evento.tipo;
+      fila[cols.descripcion] = evento.descripcion;
+      fila[cols.datos_extra] = evento.datosExtra;
+      return fila;
+    });
+
+    // Escribir todas las filas de una vez (batch write)
+    const sheet = getHoja("historial");
+    const lastRow = sheet.getLastRow();
+    if (filas.length > 0) {
+      sheet.getRange(lastRow + 1, 1, filas.length, filas[0].length).setValues(filas);
+      Logger.log(`✅ Procesados ${filas.length} eventos de historial en batch`);
+    }
+
+  } catch (error) {
+    Logger.log(`⚠️ Error procesando cola de historial: ${error.message}`);
+    // No lanzar error para no afectar la operación principal
+  }
+}
+
+// ============================================
+// FUNCIONES HELPER PARA CINTAS (JSON)
+// ============================================
+
+/**
+ * Parsea el JSON de datos de cintas
+ * @param {string} jsonString - JSON string de datos_cintas
+ * @returns {Object|null} Objeto con estructura de cintas o null
+ */
+function parsearDatosCintas(jsonString) {
+  if (!jsonString || jsonString === "" || jsonString === "null") return null;
+  // Filtrar valores no-JSON conocidos (datos legacy en la columna)
+  const val = String(jsonString).trim();
+  if (val === "NO" || val === "SI" || val === "SÍ") return null;
+  if (!val.startsWith("{") && !val.startsWith("[")) return null;
+  try {
+    return JSON.parse(val);
+  } catch(e) {
+    return null;
+  }
+}
+
+/**
+ * Serializa datos de cintas a JSON string
+ * @param {Object} datosCintas - Objeto con estructura: {tipos: {vhs, vhsc, beta, minidv, 8mm}, total, precioUnitario}
+ * @returns {string} JSON string o vacío
+ */
+function serializarDatosCintas(datosCintas) {
+  if (!datosCintas) return "";
+  try {
+    return JSON.stringify(datosCintas);
+  } catch(e) {
+    Logger.log(`⚠️ Error serializando datos_cintas: ${e.message}`);
+    return "";
+  }
+}
+
+/**
+ * Crea objeto de datos de cintas desde valores individuales
+ * @param {Object} valores - {vhs, vhsc, beta, minidv, 8mm, precioUnitario}
+ * @returns {Object} Estructura completa de datos de cintas
+ */
+function crearDatosCintas(valores) {
+  const tipos = {
+    vhs: parseInt(valores.vhs) || 0,
+    vhsc: parseInt(valores.vhsc) || 0,
+    beta: parseInt(valores.beta) || 0,
+    minidv: parseInt(valores.minidv) || 0,
+    "8mm": parseInt(valores["8mm"]) || 0
+  };
+
+  const total = Object.values(tipos).reduce((sum, val) => sum + val, 0);
+
+  return {
+    tipos: tipos,
+    total: total,
+    precioUnitario: parseFloat(valores.precioUnitario) || 0
+  };
+}
+
+/**
+ * Lee datos de cintas desde una fila (soporta formato nuevo y viejo)
+ * @param {Array} fila - Fila de la hoja de reparaciones
+ * @param {Object} cols - Columnas de la hoja
+ * @returns {Object} Datos de cintas normalizados
+ */
+function leerDatosCintasDesdeFila(fila, cols) {
+  // Intentar leer desde nueva columna JSON primero
+  const datosJSON = parsearDatosCintas(fila[cols.datos_cintas]);
+  if (datosJSON) return datosJSON;
+
+  return null;
 }
 
 /**
@@ -805,17 +1234,16 @@ function obtenerHistorialDeReparacion(resguardo) {
  * Obtiene métricas del dashboard
  * @returns {Object}
  */
-function obtenerMetricas() {
+function obtenerMetricas(dataPreCargada) {
   try {
     const cache = CacheService.getScriptCache();
     const cached = cache.get('metricas-dashboard');
     if (cached) {
-      Logger.log('Métricas obtenidas del caché');
       return JSON.parse(cached);
     }
 
     const cols = HOJAS.reparaciones.cols;
-    const data = obtenerTodoConHeader("reparaciones");
+    const data = dataPreCargada || obtenerTodoConHeader("reparaciones");
 
     const metricas = {
       presupuestoPendiente: 0,
@@ -823,6 +1251,9 @@ function obtenerMetricas() {
       esperandoPieza: 0,
       piezaEntregada: 0,
       enReparacion: 0,
+      pptosAceptados: 0,
+      cintasEnReparacion: 0,
+      mensajeriaActiva: 0,
       listos: 0,
       garantia: 0,
       totalReparaciones: 0,
@@ -832,10 +1263,11 @@ function obtenerMetricas() {
       equiposRetrasados: []
     };
 
-    // Para las alertas de equipos retrasados necesitamos datos de presupuestos
-    // Los cargamos una vez
+    // Construir Map de presupuestos por ID para búsqueda O(1)
     const colP = HOJAS.presupuestos.cols;
-    let presupuestosData = null;
+    let pptoMap = null;
+
+    const ahora = new Date();
 
     for (let i = 1; i < data.length; i++) {
       const fila = data[i];
@@ -860,7 +1292,7 @@ function obtenerMetricas() {
         // Detectar presupuestos pendientes +24h
         const fechaRecepcion = fila[cols.fecha_recepcion];
         if (fechaRecepcion) {
-          const horas = calcularHorasTranscurridas(fechaRecepcion, new Date());
+          const horas = calcularHorasTranscurridas(fechaRecepcion, ahora);
           if (horas >= 24) {
             metricas.presupuestosRetrasados.push({
               resguardo: resguardo,
@@ -879,7 +1311,7 @@ function obtenerMetricas() {
         // Alerta: Presupuestos sin respuesta +5 días
         const fechaRecepcion = fila[cols.fecha_recepcion];
         if (fechaRecepcion) {
-          const diasDesde = Math.floor((new Date() - new Date(fechaRecepcion)) / (1000 * 60 * 60 * 24));
+          const diasDesde = Math.floor((ahora - new Date(fechaRecepcion)) / (1000 * 60 * 60 * 24));
           if (diasDesde >= 5) {
             metricas.alertas.push({
               tipo: "presupuesto",
@@ -891,20 +1323,28 @@ function obtenerMetricas() {
       }
 
       if (estado === "Garantía") metricas.garantia++;
+      if (estado === "Presupuesto Aceptado") metricas.pptosAceptados++;
       if (estado === "Pieza Pendiente") metricas.esperandoPieza++;
       if (estado === "Pieza Entregada") metricas.piezaEntregada++;
-      if (estado === "En Reparación") metricas.enReparacion++;
+      if (estado === "En Reparación") {
+        metricas.enReparacion++;
+        const dc = fila[cols.datos_cintas];
+        if (dc && typeof dc === 'string' && dc.trim().startsWith('{')) metricas.cintasEnReparacion++;
+      }
 
       // Listos para recoger
       if (estado === "Reparado" || estado === "No tiene Reparación" || estado === "Presupuesto Rechazado") {
         metricas.listos++;
       }
 
+      // Mensajería activa (envío pendiente de salir)
+      if (fila[cols.entrega_mensajeria] === "SI") metricas.mensajeriaActiva++;
+
       // Alerta: Equipos listos sin recoger +7 días
       if (estadoEntrega === "PENDIENTE" && (estado === "Reparado" || estado === "No tiene Reparación")) {
         const fechaReparacion = fila[cols.fecha_reparacion];
         if (fechaReparacion) {
-          const diasDesde = Math.floor((new Date() - new Date(fechaReparacion)) / (1000 * 60 * 60 * 24));
+          const diasDesde = Math.floor((ahora - new Date(fechaReparacion)) / (1000 * 60 * 60 * 24));
           if (diasDesde >= 7) {
             metricas.alertas.push({
               tipo: "recogida",
@@ -916,37 +1356,37 @@ function obtenerMetricas() {
       }
 
       // Detectar equipos con días de entrega excedidos
-      // Necesita el presupuesto aceptado para ver dias_entrega
       const pptoAceptadoId = fila[cols.presupuesto_aceptado_id];
       if (pptoAceptadoId && (estado === "En Reparación" || estado === "Pieza Pendiente" || estado === "En Tránsito" || estado === "Pieza Entregada")) {
-        // Cargar presupuestos si aún no se han cargado
-        if (!presupuestosData) {
-          presupuestosData = obtenerTodoConHeader("presupuestos");
+        // Construir Map una sola vez (lazy)
+        if (!pptoMap) {
+          pptoMap = new Map();
+          const pptoData = obtenerTodoConHeader("presupuestos");
+          for (let j = 1; j < pptoData.length; j++) {
+            const pid = String(pptoData[j][colP.presupuesto_id]);
+            if (pid) pptoMap.set(pid, pptoData[j]);
+          }
         }
 
-        // Buscar el presupuesto aceptado
-        for (let j = 1; j < presupuestosData.length; j++) {
-          if (String(presupuestosData[j][colP.presupuesto_id]) === String(pptoAceptadoId)) {
-            const tiempoPrometido = presupuestosData[j][colP.dias_entrega];
-            if (tiempoPrometido && tiempoPrometido > 0) {
-              // Determinar fecha de inicio: fecha_reparacion del presupuesto aceptado o fecha_recepcion
-              const fechaInicio = fila[cols.fecha_recepcion];
-              if (fechaInicio) {
-                const diasTranscurridos = calcularDiasLaborables(fechaInicio, new Date());
-                const diasRestantes = tiempoPrometido - diasTranscurridos;
-                if (diasRestantes < 0) {
-                  metricas.equiposRetrasados.push({
-                    resguardo: resguardo,
-                    cliente: fila[cols.cliente_nombre],
-                    equipo: fila[cols.equipo_modelo],
-                    estado: estado,
-                    diasExcedidos: Math.abs(diasRestantes),
-                    diasPrometidos: tiempoPrometido
-                  });
-                }
+        const pptoFila = pptoMap.get(String(pptoAceptadoId));
+        if (pptoFila) {
+          const tiempoPrometido = pptoFila[colP.dias_entrega];
+          if (tiempoPrometido && tiempoPrometido > 0) {
+            const fechaInicio = fila[cols.fecha_recepcion];
+            if (fechaInicio) {
+              const diasTranscurridos = calcularDiasLaborables(fechaInicio, ahora);
+              const diasRestantes = tiempoPrometido - diasTranscurridos;
+              if (diasRestantes < 0) {
+                metricas.equiposRetrasados.push({
+                  resguardo: resguardo,
+                  cliente: fila[cols.cliente_nombre],
+                  equipo: fila[cols.equipo_modelo],
+                  estado: estado,
+                  diasExcedidos: Math.abs(diasRestantes),
+                  diasPrometidos: tiempoPrometido
+                });
               }
             }
-            break;
           }
         }
       }

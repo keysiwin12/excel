@@ -32,30 +32,6 @@ function formatearFecha(fecha, conHora) {
 }
 
 /**
- * Formatea un número como moneda europea
- * @param {number} cantidad
- * @returns {string}
- */
-function formatearMoneda(cantidad) {
-  if (cantidad === null || cantidad === undefined) return "0,00 €";
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR'
-  }).format(cantidad);
-}
-
-/**
- * Calcula el IVA de una cantidad
- * @param {number} cantidad
- * @param {number} porcentaje - Por defecto 21
- * @returns {number}
- */
-function calcularIVA(cantidad, porcentaje) {
-  porcentaje = porcentaje || 21;
-  return cantidad * (porcentaje / 100);
-}
-
-/**
  * Calcula días transcurridos entre dos fechas
  * @param {Date} fechaInicio
  * @param {Date} fechaFin
@@ -132,7 +108,8 @@ function validarEmail(email) {
 function validarTelefono(telefono) {
   if (!telefono) return false;
   const limpio = telefono.replace(/[\s\-\(\)]/g, '');
-  return limpio.length >= 9 && /^\d+$/.test(limpio);
+  const soloDigitos = limpio.startsWith('+') ? limpio.slice(1) : limpio;
+  return soloDigitos.length >= 9 && /^\d+$/.test(soloDigitos);
 }
 
 /**
@@ -200,19 +177,10 @@ function sanitizarTexto(texto) {
  */
 function formatearTelefono(telefono) {
   if (!telefono) return "";
-  let limpio = telefono.replace(/[^\d+]/g, '');
-
-  if (!limpio.startsWith('+')) {
-    if (limpio.startsWith('34')) {
-      limpio = '+' + limpio;
-    } else if (limpio.match(/^[679]/)) {
-      limpio = '+34' + limpio;
-    } else if (limpio.startsWith('51')) {
-      limpio = '+' + limpio;
-    }
-  }
-
-  return limpio;
+  if (!/\d/.test(telefono)) return telefono; // sin dígitos (ej: "No tiene") → devolver tal cual
+  const limpio = telefono.replace(/[^\d+]/g, '');
+  if (limpio.startsWith('+')) return limpio;
+  return '+34' + limpio;
 }
 
 // ============================================
@@ -228,66 +196,26 @@ function estadoRequiereRecojo(estado) {
   return ["Reparado", "No tiene Reparación", "Presupuesto Rechazado"].includes(estado);
 }
 
-/**
- * Obtiene el icono y color de un estado de reparación
- * @param {string} estado
- * @returns {Object}
- */
-function obtenerInfoEstado(estado) {
-  return ESTADOS_REPARACION[estado] || { icono: "?", color: "#6c757d", descripcion: "Estado desconocido" };
-}
-
-/**
- * Obtiene el icono y color de un estado de pedido
- * @param {string} estadoPedido
- * @returns {Object}
- */
-function obtenerInfoEstadoPedido(estadoPedido) {
-  return ESTADOS_PEDIDO[estadoPedido] || ESTADOS_PEDIDO["Pendiente"];
-}
-
-// ============================================
-// NOTIFICACIONES Y LOGS
-// ============================================
-
-/**
- * Registra una acción en el log de Apps Script
- * @param {string} tipo
- * @param {string} mensaje
- * @param {Object} datos
- */
-function registrarLog(tipo, mensaje, datos) {
-  Logger.log(`[${tipo}] ${mensaje}`);
-}
-
 // ============================================
 // CACHE HELPERS
 // ============================================
 
 /**
- * Invalida todos los cachés
+ * Invalida todos los cachés (memoria + CacheService)
  */
 function invalidarCaches() {
+  // Caché de CacheService
   const cache = CacheService.getScriptCache();
   cache.remove('metricas-dashboard');
-}
 
-/**
- * Obtiene un valor del caché o lo calcula si no existe
- * @param {string} key
- * @param {Function} calculador
- * @param {number} ttl - Segundos (por defecto 300)
- * @returns {*}
- */
-function obtenerOCalcular(key, calculador, ttl) {
-  ttl = ttl || 300;
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(key);
-  if (cached) return JSON.parse(cached);
-
-  const valor = calculador();
-  cache.put(key, JSON.stringify(valor), ttl);
-  return valor;
+  // Caches en memoria (Database.gs)
+  // Nota: No limpiamos SS_CACHE ni SHEET_CACHE porque son referencias a hojas válidas
+  // Solo limpiamos caches de datos que pueden quedar obsoletos
+  if (typeof VERSION_CACHE !== 'undefined') {
+    for (const key in VERSION_CACHE) {
+      delete VERSION_CACHE[key];
+    }
+  }
 }
 
 // ============================================

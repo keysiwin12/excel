@@ -7,4 +7,5 @@ README.md
 DEPLOYMENT.md
 .git/**
 node_modules/**
+tests/**
 .clasp.json
